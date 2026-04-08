@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Solana Snipe Bot</title>
+<title>BankMaker7</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 
 <!-- ═══════════════════════════════════════════════════════════════
@@ -280,7 +280,7 @@ body::before{content:'';position:fixed;inset:0;
 <!-- ══ TOPBAR ══════════════════════════════════════════════════ -->
 <div id="topbar">
   <div>
-    <div class="logo">SOLANA SNIPE BOT</div>
+    <div class="logo">BankMaker7</div>
     <div class="sub">PHANTOM WALLET &nbsp;·&nbsp; PUMPPORTAL + DEXSCREENER &nbsp;·&nbsp; JUPITER ROUTING</div>
   </div>
   <div class="topbar-r">
@@ -1423,7 +1423,10 @@ function updateStats(){
   p.textContent=(profit>=0?'+':'')+profit.toFixed(3);
   p.style.color=profit>=0?'var(--g)':'var(--r)';
 }
-
+const RPC_ENDPOINTS = [
+  'https://mainnet.helius-rpc.com/?api-key=76293689-99be-45ab-9910-5c76a9ae79c7',  
+  'https://api.mainnet-beta.solana.com',
+];
 // ═══════════════════════════════════════════════════════
 // 21.  TICKER TAPE
 // ═══════════════════════════════════════════════════════
