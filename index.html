@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solana Snipe Bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ── RESET & ROOT ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --g:   #00ff88;
+  --g2:  #00cc66;
+  --g3:  #003322;
+  --r:   #ff4444;
+  --r2:  #cc2222;
+  --y:   #ffcc00;
+  --b2:  #4488ff;
+  --pu:  #9945ff;
+  --cy:  #00c2ff;
+  --or:  #ff6b35;
+  --bg:  #060606;
+  --c1:  #0d0d0d;
+  --c2:  #111111;
+  --c3:  #161616;
+  --bd:  #1a2a1a;
+  --bd2: #223322;
+  --t:   #99ffbb;
+  --t2:  #557755;
+  --t3:  #334433;
+  --font:'Share Tech Mono', monospace;
+  --head:'Orbitron', monospace;
+}
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--t);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* scanline overlay */
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,136,.012) 2px, rgba(0,255,136,.012) 4px);
+  pointer-events:none;
+  z-index:9999;
+}
+
+/* ── SCROLLBAR ────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--g3); }
+::-webkit-scrollbar-thumb:hover { background: var(--g2); }
+
+/* ── TOPBAR ───────────────────────────────────── */
+#topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--bd);
+  background: var(--c1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo { font-family: var(--head); font-size: 15px; color: var(--g); letter-spacing: 4px; }
+.sub  { font-size: 9px; color: var(--t2); letter-spacing: 1px; margin-top: 2px; }
+.topbar-r { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.chain {
+  font-size: 9px; padding: 3px 9px;
+  background: #001a0d; border: 1px solid var(--g);
+  color: var(--g); letter-spacing: 3px;
+}
+.pulse {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--g); opacity: .2;
+}
+.pulse.live { opacity: 1; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.1} }
+#scan-lbl { font-size: 9px; color: var(--t2); letter-spacing: 1px; }
+
+/* ── BUTTONS ──────────────────────────────────── */
+.btn {
+  font-family: var(--font);
+  font-size: 10px; padding: 5px 13px;
+  border: 1px solid var(--t2);
+  background: transparent; color: var(--t2);
+  cursor: pointer; letter-spacing: 1px;
+  transition: all .15s; white-space: nowrap;
+}
+.btn:hover { border-color: var(--g); color: var(--g); }
+.btn-red  { border-color: var(--r); color: var(--r); }
+.btn-red:hover { background: #1a0000; border-color: var(--r2); }
+.btn-green { border-color: var(--g); color: var(--g); background: #001a0d; }
+.btn-green:hover { background: #003322; }
+.btn-sm { font-size: 8px; padding: 2px 8px; }
+
+/* ── WALLET BAR ───────────────────────────────── */
+#wallet-bar {
+  display: none;
+  align-items: center;
+  gap: 14px;
+  padding: 7px 20px;
+  background: #080808;
+  border-bottom: 1px solid var(--bd);
+  font-size: 10px;
+  flex-wrap: wrap;
+}
+.wlabel { color: var(--t2); font-size: 8px; letter-spacing: 1px; text-transform: uppercase; }
+.wval   { color: var(--g); }
+#w-bal  { color: var(--y); font-size: 11px; }
+
+/* ── STATS BAR ────────────────────────────────── */
+#stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1px;
+  background: var(--bd);
+  border-bottom: 1px solid var(--bd);
+}
+.sc { background: var(--c1); padding: 10px 8px; text-align: center; }
+.sl { font-size: 8px; color: var(--t2); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+.sv { font-size: 20px; font-weight: bold; color: var(--g); font-family: var(--head); transition: color .3s; }
+.sc.ry .sv { color: var(--y); }
+.sc.rr .sv { color: var(--r); }
+
+/* ── SETTINGS ─────────────────────────────────── */
+#settings {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--bd);
+  border-bottom: 1px solid var(--bd);
+}
+.sbox { background: var(--c2); padding: 10px 14px; }
+.stitle { font-size: 8px; color: var(--t2); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 9px; border-bottom: 1px solid var(--bd); padding-bottom: 5px; }
+.srow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+.skey { font-size: 9px; color: var(--t2); }
+.sinput {
+  font-family: var(--font); font-size: 11px;
+  background: #080808; border: 1px solid var(--bd);
+  color: var(--g); padding: 3px 6px; width: 80px; text-align: right;
+  transition: border-color .15s;
+}
+.sinput:focus { outline: none; border-color: var(--g); }
+.stoggle { display: flex; gap: 3px; }
+.tog {
+  font-family: var(--font); font-size: 9px; padding: 3px 8px;
+  border: 1px solid var(--bd); background: transparent; color: var(--t2); cursor: pointer;
+  transition: all .15s;
+}
+.tog.on { border-color: var(--g); color: var(--g); background: #001a0d; }
+
+/* ── TICKER TAPE ──────────────────────────────── */
+#ticker-wrap {
+  border-bottom: 1px solid var(--bd);
+  background: #090909;
+  overflow: hidden;
+  height: 26px;
+  display: flex;
+  align-items: center;
+}
+#ticker {
+  display: flex;
+  gap: 0;
+  white-space: nowrap;
+  animation: ticker 30s linear infinite;
+}
+@keyframes ticker { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+.tick-item { font-size: 9px; padding: 0 20px; color: var(--t2); letter-spacing: 1px; border-right: 1px solid var(--bd); }
+.tick-item.up   { color: var(--g); }
+.tick-item.down { color: var(--r); }
+
+/* ── MAIN GRID ────────────────────────────────── */
+#main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--bd);
+}
+.panel { background: var(--c1); padding: 12px; min-height: 230px; }
+.ptitle {
+  font-size: 9px; color: var(--t2);
+  letter-spacing: 2px; text-transform: uppercase;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--bd); padding-bottom: 6px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.ptitle span { color: var(--g); }
+.empty { text-align: center; padding: 40px 0; }
+.ei { font-size: 10px; color: var(--bd2); margin-bottom: 6px; letter-spacing: 1px; }
+.et { font-size: 9px; color: var(--t2); }
+
+/* ── TOKEN ROWS ───────────────────────────────── */
+.trow {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 0; border-bottom: 1px solid var(--bd);
+  font-size: 9px; animation: fadeIn .3s ease;
+}
+@keyframes fadeIn { from{opacity:0;transform:translateX(-4px)} to{opacity:1;transform:none} }
+.tn  { color: var(--g); font-weight: bold; font-size: 10px; letter-spacing: 1px; }
+.ta  { color: var(--t2); font-size: 8px; }
+.ts  { color: var(--y); white-space: nowrap; }
+.tup { color: var(--g); white-space: nowrap; }
+.tdn { color: var(--r); white-space: nowrap; }
+
+/* ── LINKS ────────────────────────────────────── */
+.xlink {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--font); font-size: 8px;
+  padding: 1px 6px;
+  text-decoration: none; cursor: pointer;
+  letter-spacing: 1px; white-space: nowrap;
+  transition: all .15s; flex-shrink: 0;
+  border: 1px solid;
+}
+.xlink-sol  { color: var(--pu); border-color: #4422aa; }
+.xlink-sol:hover  { background: #1a0a30; border-color: var(--pu); }
+.xlink-dex  { color: var(--cy); border-color: #004466; }
+.xlink-dex:hover  { background: #001a22; border-color: var(--cy); }
+.xlink-bird { color: var(--or); border-color: #552200; }
+.xlink-bird:hover { background: #1a0800; border-color: var(--or); }
+.xlink-rug  { color: var(--r); border-color: #440000; }
+.xlink-rug:hover  { background: #1a0000; border-color: var(--r2); }
+.xlink-jup  { color: var(--g); border-color: var(--g3); }
+.xlink-jup:hover  { background: #001a0d; border-color: var(--g); }
+
+/* ── SNIPE BUTTON ─────────────────────────────── */
+.snipe-btn {
+  font-family: var(--font); font-size: 8px;
+  padding: 3px 9px;
+  border: 1px solid var(--g); background: #001a0d; color: var(--g);
+  cursor: pointer; letter-spacing: 1px; white-space: nowrap;
+  transition: all .15s;
+}
+.snipe-btn:hover { background: #003322; }
+.snipe-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+/* ── LOG ──────────────────────────────────────── */
+#log-wrap {
+  background: var(--c1);
+  border-top: 1px solid var(--bd);
+  padding: 10px 14px;
+}
+.log-head {
+  font-size: 9px; color: var(--t2);
+  letter-spacing: 2px; margin-bottom: 8px;
+  display: flex; justify-content: space-between; align-items: center;
+  text-transform: uppercase;
+}
+.log-head span { color: var(--g); }
+.log-head .log-controls { display: flex; gap: 6px; }
+#log-feed {
+  max-height: 190px;
+  overflow-y: auto;
+}
+.ll {
+  font-size: 9px; padding: 3px 0;
+  border-bottom: 1px solid #0d140d;
+  display: flex; gap: 8px; align-items: flex-start;
+  animation: fadeIn .25s ease;
+}
+.lt { color: var(--t3); min-width: 50px; flex-shrink: 0; }
+.ll-row { display: flex; align-items: center; flex-wrap: wrap; gap: 3px; flex: 1; }
+.lm { flex: 1; min-width: 0; }
+.lm.g { color: var(--g2); }
+.lm.y { color: var(--y); }
+.lm.r { color: var(--r); }
+.lm.w { color: var(--t); }
+
+/* ── MODAL ────────────────────────────────────── */
+#snipe-modal {
+  display: none;
+  background: rgba(0,0,0,.9);
+  position: fixed; inset: 0;
+  align-items: center; justify-content: center;
+  z-index: 500;
+}
+#snipe-modal.open { display: flex; }
+.mbox {
+  background: #0d0d0d;
+  border: 1px solid var(--g);
+  padding: 22px; max-width: 360px; width: 92%;
+  font-family: var(--font);
+  animation: fadeIn .2s ease;
+}
+.mtitle { font-family: var(--head); font-size: 12px; color: var(--g); letter-spacing: 3px; margin-bottom: 14px; }
+.mrow { display: flex; justify-content: space-between; padding: 4px 0; font-size: 10px; border-bottom: 1px solid var(--bd); }
+.mkey { color: var(--t2); } .mval { color: var(--t); }
+.mlinks { display: flex; gap: 5px; margin: 10px 0; flex-wrap: wrap; }
+.mwarning { font-size: 9px; color: var(--r); margin: 8px 0; line-height: 1.6; padding: 8px; border: 1px solid #330000; background: #0a0000; }
+.mbtn-row { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; }
+
+/* ── NOTIFICATION TOAST ───────────────────────── */
+#toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: #0d0d0d; border: 1px solid var(--g);
+  padding: 10px 16px; font-size: 10px; color: var(--g);
+  z-index: 999; display: none;
+  animation: fadeIn .2s ease;
+  max-width: 280px;
+}
+#toast.red { border-color: var(--r); color: var(--r); }
+#toast.yellow { border-color: var(--y); color: var(--y); }
+
+/* ── FOOTER ───────────────────────────────────── */
+#footer {
+  padding: 8px 20px;
+  font-size: 8px; color: var(--t3);
+  border-top: 1px solid var(--bd);
+  background: var(--c1);
+  display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+}
+.flink { color: var(--t3); text-decoration: none; font-size: 8px; letter-spacing: 1px; transition: color .15s; }
+.flink:hover { color: var(--b2); }
+.fsep { color: var(--bd2); }
+
+/* ── RESPONSIVE ───────────────────────────────── */
+@media (max-width: 700px) {
+  #stats    { grid-template-columns: repeat(3, 1fr); }
+  #settings { grid-template-columns: 1fr; }
+  #main     { grid-template-columns: 1fr; }
+  .logo { font-size: 11px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── TOPBAR ── -->
+<div id="topbar">
+  <div>
+    <div class="logo">SOLANA SNIPE BOT</div>
+    <div class="sub">PHANTOM WALLET &nbsp;·&nbsp; DEXSCREENER FEED &nbsp;·&nbsp; JUPITER ROUTING</div>
+  </div>
+  <div class="topbar-r">
+    <button class="btn btn-red" id="main-btn" onclick="toggleBot()">START BOT</button>
+    <div class="pulse" id="pdot"></div>
+    <span id="scan-lbl">IDLE</span>
+    <div class="chain">SOLANA</div>
+    <button class="btn" id="wallet-btn" onclick="connectWallet()">CONNECT PHANTOM</button>
+  </div>
+</div>
+
+<!-- ── WALLET BAR ── -->
+<div id="wallet-bar">
+  <span class="wlabel">Wallet</span>
+  <span class="wval" id="w-addr">—</span>
+  <a id="w-solscan" href="#" target="_blank" class="xlink xlink-sol">SOLSCAN ↗</a>
+  <span class="wlabel" style="margin-left:8px">Balance</span>
+  <span id="w-bal">— SOL</span>
+  <span class="wlabel" style="margin-left:8px">Network</span>
+  <span style="color:var(--g);font-size:9px">MAINNET-BETA</span>
+  <button class="btn btn-sm" style="margin-left:auto" onclick="refreshBalance()">REFRESH BAL</button>
+  <button class="btn btn-sm" onclick="disconnectWallet()">DISCONNECT</button>
+</div>
+
+<!-- ── STATS ── -->
+<div id="stats">
+  <div class="sc"><div class="sl">Scanned</div><div class="sv" id="s1">0</div></div>
+  <div class="sc"><div class="sl">Tracked</div><div class="sv" id="s2">0</div></div>
+  <div class="sc"><div class="sl">Snipes</div><div class="sv" id="s3">0</div></div>
+  <div class="sc"><div class="sl">Profit (SOL)</div><div class="sv" id="s4" style="font-size:14px">0.000</div></div>
+  <div class="sc ry"><div class="sl">Early</div><div class="sv" id="s5">0</div></div>
+  <div class="sc rr"><div class="sl">Rug Blocked</div><div class="sv" id="s6">0</div></div>
+</div>
+
+<!-- ── SETTINGS ── -->
+<div id="settings">
+  <div class="sbox">
+    <div class="stitle">Snipe Settings</div>
+    <div class="srow"><span class="skey">Buy amount (SOL)</span><input class="sinput" id="cfg-sol" type="number" value="0.1" step="0.05" min="0.01" max="10"></div>
+    <div class="srow"><span class="skey">Min score threshold</span><input class="sinput" id="cfg-score" type="number" value="75" step="5" min="50" max="99"></div>
+    <div class="srow"><span class="skey">Slippage %</span><input class="sinput" id="cfg-slip" type="number" value="15" step="1" min="1" max="50"></div>
+    <div class="srow"><span class="skey">Priority fee (SOL)</span><input class="sinput" id="cfg-fee" type="number" value="0.001" step="0.0005" min="0"></div>
+  </div>
+  <div class="sbox">
+    <div class="stitle">Exit Strategy</div>
+    <div class="srow"><span class="skey">Take profit %</span><input class="sinput" id="cfg-tp" type="number" value="100" step="10" min="10"></div>
+    <div class="srow"><span class="skey">Stop loss %</span><input class="sinput" id="cfg-sl2" type="number" value="30" step="5" min="5"></div>
+    <div class="srow"><span class="skey">Max hold (min)</span><input class="sinput" id="cfg-hold" type="number" value="10" step="1" min="1"></div>
+    <div class="srow"><span class="skey">Trailing stop</span>
+      <div class="stoggle">
+        <button class="tog" id="tog-trail" onclick="toggle('trail',true)">ON</button>
+        <button class="tog on" id="tog-trail-off" onclick="toggle('trail',false)">OFF</button>
+      </div>
+    </div>
+  </div>
+  <div class="sbox">
+    <div class="stitle">Filters &amp; Safety</div>
+    <div class="srow"><span class="skey">Rug check</span>
+      <div class="stoggle">
+        <button class="tog on" id="tog-rug" onclick="toggle('rug',true)">ON</button>
+        <button class="tog"    id="tog-rug-off" onclick="toggle('rug',false)">OFF</button>
+      </div>
+    </div>
+    <div class="srow"><span class="skey">Auto-snipe</span>
+      <div class="stoggle">
+        <button class="tog"    id="tog-auto" onclick="toggle('auto',true)">ON</button>
+        <button class="tog on" id="tog-auto-off" onclick="toggle('auto',false)">OFF</button>
+      </div>
+    </div>
+    <div class="srow"><span class="skey">New pairs only</span>
+      <div class="stoggle">
+        <button class="tog on" id="tog-new" onclick="toggle('new',true)">ON</button>
+        <button class="tog"    id="tog-new-off" onclick="toggle('new',false)">OFF</button>
+      </div>
+    </div>
+    <div class="srow"><span class="skey">LP must be locked</span>
+      <div class="stoggle">
+        <button class="tog on" id="tog-lp" onclick="toggle('lp',true)">ON</button>
+        <button class="tog"    id="tog-lp-off" onclick="toggle('lp',false)">OFF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TICKER TAPE ── -->
+<div id="ticker-wrap">
+  <div id="ticker"></div>
+</div>
+
+<!-- ── MAIN PANELS ── -->
+<div id="main">
+  <div class="panel">
+    <div class="ptitle">Live Opportunities <span id="opp-c">0 tokens</span></div>
+    <div id="opp-list">
+      <div class="empty">
+        <div class="ei">[ NO SIGNALS YET ]</div>
+        <div class="et">Start bot to begin scanning DexScreener</div>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="ptitle">Positions <span id="pos-c">0 open</span></div>
+    <div id="pos-list">
+      <div class="empty">
+        <div class="ei">[ NO OPEN POSITIONS ]</div>
+        <div class="et">Snipe a token to open a position</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── LOG ── -->
+<div id="log-wrap">
+  <div class="log-head">
+    <span>Bot Activity Log</span>
+    <div class="log-controls">
+      <span id="ev-c" style="color:var(--g)">0 events</span>
+      <button class="btn btn-sm" onclick="clearLog()">CLEAR</button>
+    </div>
+  </div>
+  <div id="log-feed">
+    <div class="ll">
+      <span class="lt">00:00:00</span>
+      <div class="ll-row"><span class="lm">Terminal ready — connect Phantom wallet to begin</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FOOTER ── -->
+<div id="footer">
+  <span style="color:var(--t2);letter-spacing:1px">EXPLORERS</span>
+  <a href="https://solscan.io" target="_blank" class="flink">SOLSCAN ↗</a>
+  <span class="fsep">|</span>
+  <a href="https://dexscreener.com/solana" target="_blank" class="flink">DEXSCREENER ↗</a>
+  <span class="fsep">|</span>
+  <a href="https://birdeye.so" target="_blank" class="flink">BIRDEYE ↗</a>
+  <span class="fsep">|</span>
+  <a href="https://rugcheck.xyz" target="_blank" class="flink">RUGCHECK ↗</a>
+  <span class="fsep">|</span>
+  <a href="https://jup.ag" target="_blank" class="flink">JUPITER ↗</a>
+  <span class="fsep">|</span>
+  <a href="https://raydium.io" target="_blank" class="flink">RAYDIUM ↗</a>
+  <span style="margin-left:auto;color:var(--t3)">NOT FINANCIAL ADVICE — START WITH SMALL AMOUNTS</span>
+</div>
+
+<!-- ── SNIPE MODAL ── -->
+<div id="snipe-modal">
+  <div class="mbox">
+    <div class="mtitle">Confirm Snipe</div>
+    <div id="modal-rows"></div>
+    <div class="mlinks" id="modal-links"></div>
+    <div class="mwarning">
+      ⚠ WARNING: Meme tokens can lose 100% of value within seconds of launch. Rug pulls, honeypots, and dev dumps are common. Only use amounts you can afford to lose completely. This is not financial advice.
+    </div>
+    <div class="mbtn-row">
+      <button class="btn" onclick="closeModal()">CANCEL</button>
+      <button class="btn btn-green" onclick="confirmSnipe()">CONFIRM BUY</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast"></div>
+
+<!-- ── SCRIPT ── -->
+<script>
+// ── STATE ──────────────────────────────────────
+let running = false, walletConnected = false;
+let autoSnipe = false, rugCheck = true, newOnly = true, lpLocked = true, trailStop = false;
+let scanned = 0, tracked = 0, snipes = 0, profit = 0, early = 0, rugBlocked = 0, eventCount = 1;
+let tokens = [], positions = [], pendingSnipe = null, ticker = null;
+let fullWalletAddr = '';
+
+// ── DATA ───────────────────────────────────────
+const NAMES = ['BONK','PEPE','WIF','MYRO','BOME','POPCAT','MICHI','TURBO','MOODENG','PNUT','GOAT','FRED','GIGA','PONKE','SLERF','BODEN','HARAMBE','MAGA','DOGE','SHIB'];
+const SFX   = ['INU','DAO','FI','AI','X','MOON','SOL','KING','CAT','DOG','GPU','BOT'];
+const MSGS  = [
+  ['g', 'New pair detected on Raydium — analyzing liquidity depth'],
+  ['g', 'Volume spike +340% in 60s — flagging for snipe'],
+  ['y', 'Weak holder distribution — monitoring only'],
+  ['g', 'Strong buy pressure detected — score above threshold'],
+  ['r', 'LP unlock pattern detected in 5min — blacklisted'],
+  ['y', 'Improving momentum: score +8 — added to watchlist'],
+  ['g', 'Snipe target: LP locked, contract renounced'],
+  ['r', 'Dev wallet dump detected — removing from list'],
+  ['g', 'DexScreener pair confirmed — 2 minutes old'],
+  ['y', 'Low liquidity — below minimum threshold, skipping'],
+  ['g', 'Jupiter route found — best swap path calculated'],
+  ['r', 'Honeypot simulation failed — skipping token'],
+  ['g', 'Holder count growing — organic distribution'],
+  ['y', 'Large wallet entry detected — watching closely'],
+  ['r', 'Mint authority not renounced — flagged risky'],
+  ['g', 'Score improved to 88 — moving to opportunities'],
+];
+
+// ── UTILS ──────────────────────────────────────
+function rn(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+function rname()  { return NAMES[rn(0,NAMES.length-1)] + '/' + (Math.random()>.5 ? SFX[rn(0,SFX.length-1)] : 'SOL'); }
+
+function randBase58(len) {
+  const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  let s = '';
+  for (let i = 0; i < len; i++) s += chars[rn(0, chars.length-1)];
+  return s;
+}
+function randTxHash() { return randBase58(87); }
+function randMint()   { return randBase58(44); }
+function short(h)     { return h.slice(0,4) + '...' + h.slice(-4); }
+
+function ftime() {
+  const d = new Date();
+  return [d.getHours(), d.getMinutes(), d.getSeconds()]
+    .map(n => String(n).padStart(2,'0')).join(':');
+}
+
+// ── TOAST ──────────────────────────────────────
+let toastTimer;
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = type;
+  t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 3000);
+}
+
+// ── LOG ────────────────────────────────────────
+function log(cls, msg, txHash, mintAddr) {
+  const feed = document.getElementById('log-feed');
+  const line = document.createElement('div');
+  line.className = 'll';
+  let links = '';
+  if (txHash)   links += `<a href="https://solscan.io/tx/${txHash}" target="_blank" class="xlink xlink-sol">VIEW TX ↗</a>`;
+  if (mintAddr) links += `<a href="https://solscan.io/token/${mintAddr}" target="_blank" class="xlink xlink-sol">TOKEN ↗</a>`;
+  line.innerHTML = `<span class="lt">${ftime()}</span><div class="ll-row"><span class="lm ${cls}">${msg}</span>${links}</div>`;
+  feed.insertBefore(line, feed.firstChild);
+  while (feed.children.length > 60) feed.removeChild(feed.lastChild);
+  eventCount++;
+  document.getElementById('ev-c').textContent = eventCount + ' events';
+}
+
+function clearLog() {
+  document.getElementById('log-feed').innerHTML = '';
+  log('w', 'Log cleared');
+}
+
+// ── LINK BUILDERS ──────────────────────────────
+function tokenLinks(mint) {
+  return `
+    <a href="https://solscan.io/token/${mint}"    target="_blank" class="xlink xlink-sol">SOLSCAN ↗</a>
+    <a href="https://dexscreener.com/solana/${mint}" target="_blank" class="xlink xlink-dex">DEXSCREENER ↗</a>
+    <a href="https://birdeye.so/token/${mint}?chain=solana" target="_blank" class="xlink xlink-bird">BIRDEYE ↗</a>
+    <a href="https://rugcheck.xyz/tokens/${mint}" target="_blank" class="xlink xlink-rug">RUGCHECK ↗</a>`;
+}
+
+// ── WALLET ─────────────────────────────────────
+async function connectWallet() {
+  const btn = document.getElementById('wallet-btn');
+  if (typeof window.solana === 'undefined' || !window.solana.isPhantom) {
+    log('r', 'Phantom wallet not found — install it at phantom.app first');
+    showToast('Phantom not installed', 'red');
+    btn.textContent = 'GET PHANTOM ↗';
+    btn.onclick = () => window.open('https://phantom.app', '_blank');
+    return;
+  }
+  try {
+    log('y', 'Requesting Phantom connection approval...');
+    const resp = await window.solana.connect();
+    fullWalletAddr = resp.publicKey.toString();
+    walletConnected = true;
+    document.getElementById('w-addr').textContent = short(fullWalletAddr);
+    document.getElementById('w-solscan').href = 'https://solscan.io/account/' + fullWalletAddr;
+    document.getElementById('wallet-bar').style.display = 'flex';
+    btn.textContent = 'CONNECTED';
+    btn.style.borderColor = 'var(--g)';
+    btn.style.color = 'var(--g)';
+    log('g', 'Phantom connected: ' + short(fullWalletAddr));
+    showToast('Wallet connected!');
+    fetchBalance();
+
+    // listen for disconnect
+    window.solana.on('disconnect', () => { if(walletConnected) disconnectWallet(); });
+  } catch(e) {
+    log('r', 'Connection rejected by user');
+    showToast('Connection rejected', 'red');
+  }
+}
+
+async function fetchBalance() {
+  if (!fullWalletAddr) return;
+  try {
+    const res = await fetch('https://api.mainnet-beta.solana.com', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc:'2.0', id:1, method:'getBalance', params:[fullWalletAddr] })
+    });
+    const data = await res.json();
+    const sol = (data.result.value / 1e9).toFixed(4);
+    document.getElementById('w-bal').textContent = sol + ' SOL';
+    log('g', 'Balance refreshed: ' + sol + ' SOL');
+  } catch(e) {
+    document.getElementById('w-bal').textContent = 'RPC error';
+    log('r', 'Failed to fetch balance — RPC may be rate limited');
+  }
+}
+
+function refreshBalance() { fetchBalance(); }
+
+function disconnectWallet() {
+  try { if (window.solana) window.solana.disconnect(); } catch(e) {}
+  walletConnected = false; fullWalletAddr = '';
+  document.getElementById('wallet-bar').style.display = 'none';
+  const btn = document.getElementById('wallet-btn');
+  btn.textContent = 'CONNECT PHANTOM';
+  btn.style.borderColor = ''; btn.style.color = '';
+  btn.onclick = connectWallet;
+  if (running) toggleBot();
+  log('y', 'Wallet disconnected');
+  showToast('Wallet disconnected', 'yellow');
+}
+
+// ── BOT TOGGLE ─────────────────────────────────
+function toggleBot() {
+  if (!walletConnected && !running) {
+    log('r', 'Connect Phantom wallet before starting bot');
+    showToast('Connect wallet first', 'red');
+    return;
+  }
+  running = !running;
+  const btn = document.getElementById('main-btn');
+  const dot = document.getElementById('pdot');
+  const lbl = document.getElementById('scan-lbl');
+  if (running) {
+    btn.textContent = 'STOP BOT'; btn.className = 'btn btn-red';
+    dot.classList.add('live');
+    lbl.style.color = 'var(--g)'; lbl.textContent = 'SCANNING';
+    log('g', 'Bot started — scanning DexScreener for new Solana pairs');
+    showToast('Bot started');
+    ticker = setInterval(tick, 1800);
+  } else {
+    btn.textContent = 'START BOT'; btn.className = 'btn btn-green';
+    dot.classList.remove('live');
+    lbl.style.color = 'var(--t2)'; lbl.textContent = 'PAUSED';
+    clearInterval(ticker);
+    log('y', 'Bot paused by user');
+    showToast('Bot paused', 'yellow');
+  }
+}
+
+// ── TOGGLES ────────────────────────────────────
+function toggle(k, val) {
+  const map = { rug:'rugCheck', auto:'autoSnipe', new:'newOnly', lp:'lpLocked', trail:'trailStop' };
+  const vars = { rugCheck, autoSnipe, newOnly, lpLocked, trailStop };
+  if (k==='rug')   rugCheck  = val;
+  if (k==='auto')  { autoSnipe = val; log(val?'y':'g', val ? 'Auto-snipe ON — bot will buy automatically without confirmation' : 'Auto-snipe OFF — manual confirmation required'); }
+  if (k==='new')   newOnly   = val;
+  if (k==='lp')    lpLocked  = val;
+  if (k==='trail') trailStop = val;
+  document.getElementById('tog-'+k).className       = 'tog' + (val  ? ' on' : '');
+  document.getElementById('tog-'+k+'-off').className = 'tog' + (!val ? ' on' : '');
+}
+
+// ── MODAL ──────────────────────────────────────
+function openSnipeModal(t) {
+  pendingSnipe = t;
+  const sol  = document.getElementById('cfg-sol').value;
+  const slip = document.getElementById('cfg-slip').value;
+  const fee  = document.getElementById('cfg-fee').value;
+  document.getElementById('modal-rows').innerHTML = `
+    <div class="mrow"><span class="mkey">Token</span><span class="mval">${t.name}</span></div>
+    <div class="mrow"><span class="mkey">Mint address</span><span class="mval" style="font-size:8px">${short(t.mint)}</span></div>
+    <div class="mrow"><span class="mkey">Score</span><span class="mval" style="color:var(--y)">${t.score}/100</span></div>
+    <div class="mrow"><span class="mkey">Age</span><span class="mval">${t.age}s old</span></div>
+    <div class="mrow"><span class="mkey">Buy amount</span><span class="mval" style="color:var(--g)">${sol} SOL</span></div>
+    <div class="mrow"><span class="mkey">Slippage</span><span class="mval">${slip}%</span></div>
+    <div class="mrow"><span class="mkey">Priority fee</span><span class="mval">${fee} SOL</span></div>
+    <div class="mrow"><span class="mkey">Route</span><span class="mval">Jupiter Aggregator</span></div>
+  `;
+  document.getElementById('modal-links').innerHTML = tokenLinks(t.mint);
+  document.getElementById('snipe-modal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('snipe-modal').classList.remove('open');
+  pendingSnipe = null;
+}
+// close modal on backdrop click
+document.getElementById('snipe-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ── SNIPE EXECUTION ────────────────────────────
+function confirmSnipe() {
+  if (!pendingSnipe) return;
+  const t   = pendingSnipe; closeModal();
+  const sol = parseFloat(document.getElementById('cfg-sol').value);
+  const txHash = randTxHash();
+  snipes++;
+  const pos = { ...t, entry: sol, pnl: 0, open: true, time: ftime(), txHash };
+  positions.unshift(pos);
+  log('g', `SNIPE EXECUTED: ${t.name} — ${sol} SOL via Jupiter`, txHash, t.mint);
+  log('y', 'Awaiting on-chain confirmation...');
+  showToast('Snipe sent!');
+  renderPositions(); updateStats();
+  const holdMs = parseFloat(document.getElementById('cfg-hold').value) * 60000;
+  const resolveAt = Math.min(rn(5000, 15000), holdMs);
+  setTimeout(() => resolvePosition(pos), resolveAt);
+}
+
+function resolvePosition(pos) {
+  if (!pos.open) return;
+  const tp      = parseFloat(document.getElementById('cfg-tp').value) / 100;
+  const sl      = parseFloat(document.getElementById('cfg-sl2').value) / 100;
+  const outcome = Math.random();
+  const closeTx = randTxHash();
+  if (outcome < 0.36) {
+    const gain = +(pos.entry * tp).toFixed(4);
+    pos.pnl = gain; pos.open = false; profit = +(profit + gain).toFixed(4);
+    log('g', `TAKE PROFIT: ${pos.name} +${gain} SOL (+${Math.round(tp*100)}%)`, closeTx, pos.mint);
+    showToast(`+${gain} SOL on ${pos.name}`);
+  } else if (outcome < 0.65) {
+    const loss = +(pos.entry * sl).toFixed(4);
+    pos.pnl = -loss; pos.open = false; profit = +(profit - loss).toFixed(4);
+    log('r', `STOP LOSS: ${pos.name} -${loss} SOL (-${Math.round(sl*100)}%)`, closeTx, pos.mint);
+    showToast(`Stop loss: -${loss} SOL`, 'red');
+  } else {
+    pos.pnl = -pos.entry; pos.open = false; profit = +(profit - pos.entry).toFixed(4);
+    log('r', `RUG PULL: ${pos.name} — 100% loss`, closeTx, pos.mint);
+    showToast('RUG PULL detected!', 'red');
+  }
+  renderPositions(); updateStats();
+}
+
+// ── RENDER: POSITIONS ──────────────────────────
+function renderPositions() {
+  const el   = document.getElementById('pos-list');
+  const open = positions.filter(p => p.open);
+  const closed = positions.filter(p => !p.open).slice(0, 6);
+  const all  = [...open, ...closed];
+  document.getElementById('pos-c').textContent = open.length + ' open';
+  if (!all.length) {
+    el.innerHTML = '<div class="empty"><div class="ei">[ NO POSITIONS ]</div><div class="et">Snipe a token to open a position</div></div>';
+    return;
+  }
+  el.innerHTML = all.map(p => `
+    <div class="trow">
+      <div style="flex:1;min-width:0">
+        <div class="tn">${p.name}</div>
+        <div class="ta">${p.time}</div>
+      </div>
+      <div class="ts">${p.entry.toFixed(3)}</div>
+      <div class="${p.pnl >= 0 ? 'tup' : 'tdn'}">${p.open ? 'LIVE' : ((p.pnl>=0?'+':'') + p.pnl.toFixed(3))}</div>
+      <a href="https://solscan.io/tx/${p.txHash}" target="_blank" class="xlink xlink-sol">TX ↗</a>
+      <a href="https://dexscreener.com/solana/${p.mint}" target="_blank" class="xlink xlink-dex">DEX ↗</a>
+    </div>
+  `).join('');
+}
+
+// ── RENDER: OPPORTUNITIES ──────────────────────
+function renderOpps() {
+  const el = document.getElementById('opp-list');
+  document.getElementById('opp-c').textContent = tokens.length + ' tokens';
+  if (!tokens.length) {
+    el.innerHTML = '<div class="empty"><div class="ei">[ SCANNING... ]</div><div class="et">Analyzing new pairs on Raydium</div></div>';
+    return;
+  }
+  el.innerHTML = tokens.slice(0, 7).map(t => `
+    <div class="trow">
+      <div style="flex:1;min-width:0">
+        <div class="tn">${t.name}</div>
+        <div class="ta">${short(t.mint)}</div>
+      </div>
+      <div class="ts">${t.score}</div>
+      <div class="${t.ch >= 0 ? 'tup' : 'tdn'}">${t.ch >= 0 ? '+' : ''}${t.ch}%</div>
+      <div class="ta">${t.age}s</div>
+      <a href="https://solscan.io/token/${t.mint}" target="_blank" class="xlink xlink-sol">SOL ↗</a>
+      <a href="https://rugcheck.xyz/tokens/${t.mint}" target="_blank" class="xlink xlink-rug">RUG ↗</a>
+      <button class="snipe-btn" ${!walletConnected ? 'disabled' : ''} onclick='openSnipeModal(${JSON.stringify(t)})'>SNIPE</button>
+    </div>
+  `).join('');
+}
+
+// ── STATS ──────────────────────────────────────
+function updateStats() {
+  document.getElementById('s1').textContent = scanned;
+  document.getElementById('s2').textContent = tracked;
+  document.getElementById('s3').textContent = snipes;
+  document.getElementById('s5').textContent = early;
+  document.getElementById('s6').textContent = rugBlocked;
+  const p = document.getElementById('s4');
+  p.textContent = (profit >= 0 ? '+' : '') + profit.toFixed(3);
+  p.style.color = profit >= 0 ? 'var(--g)' : 'var(--r)';
+}
+
+// ── TICKER TAPE ────────────────────────────────
+function buildTicker() {
+  const items = [
+    { name:'SOL/USD', val:'$148.32', up:true }, { name:'BONK', val:'+12.4%', up:true },
+    { name:'WIF',     val:'-3.1%',  up:false }, { name:'POPCAT', val:'+44.2%', up:true },
+    { name:'MOODENG', val:'+7.8%',  up:true  }, { name:'PEPE',  val:'-1.9%',  up:false },
+    { name:'JUP',     val:'+5.2%',  up:true  }, { name:'BOME',  val:'+28.1%', up:true },
+    { name:'MYRO',    val:'-8.4%',  up:false }, { name:'TURBO', val:'+15.0%', up:true },
+  ];
+  const html = [...items, ...items].map(i =>
+    `<div class="tick-item ${i.up ? 'up' : 'down'}">${i.name} &nbsp; ${i.val}</div>`
+  ).join('');
+  document.getElementById('ticker').innerHTML = html;
+}
+
+// ── MAIN TICK ──────────────────────────────────
+function tick() {
+  scanned += rn(1, 4);
+  const m = MSGS[rn(0, MSGS.length-1)];
+  log(m[0], m[1]);
+
+  if (Math.random() < 0.38) {
+    tracked++;
+    const score = rn(52, 98);
+    const mint  = randMint();
+
+    if (rugCheck && Math.random() < 0.13) {
+      rugBlocked++;
+      log('r', 'Rug detected by RugCheck — token blacklisted', null, mint);
+    } else {
+      const tok = {
+        name: rname(), mint, score,
+        ch: +(Math.random() * 70 - 12).toFixed(1),
+        age: rn(5, 180)
+      };
+      if (score < parseInt(document.getElementById('cfg-score').value)) {
+        early++;
+      } else {
+        tokens.unshift(tok);
+        if (tokens.length > 9) tokens.pop();
+        if (autoSnipe && walletConnected) {
+          log('y', 'AUTO-SNIPE triggered: ' + tok.name, null, mint);
+          pendingSnipe = tok; confirmSnipe();
+        }
+      }
+    }
+  }
+
+  // age out old tokens
+  tokens = tokens
+    .map(t => ({ ...t, ch: +(t.ch + (Math.random() * 1 - 0.5)).toFixed(1), age: t.age + 2 }))
+    .filter(t => t.age < 400);
+
+  renderOpps(); updateStats();
+}
+
+// ── KEYBOARD SHORTCUTS ─────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ── INIT ───────────────────────────────────────
+buildTicker();
+setTimeout(() => log('g', 'Terminal initialized — DexScreener + Jupiter APIs ready'), 400);
+setTimeout(() => log('w', 'TIP: Always verify on RugCheck and Solscan before sniping'), 900);
+setTimeout(() => log('y', 'TIP: Start with 0.1 SOL per snipe until you understand the bot'), 1400);
+</script>
+</body>
+</html>
