@@ -4,1500 +4,1041 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BankMaker7</title>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-
-<!-- ═══════════════════════════════════════════════════════════════
-     SOLANA WEB3.JS  — needed to deserialize Jupiter swap transactions
-     This gives us the global: solanaWeb3
-     ══════════════════════════════════════════════════════════════ -->
+<link href="https://fonts.googleapis.com/css2?family=Syne+Mono&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@solana/web3.js@1.87.6/lib/index.iife.min.js"></script>
-
 <style>
-/* ─── RESET ────────────────────────────────────────────────────── */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --g:#00ff88; --g2:#00cc66; --g3:#003322;
-  --r:#ff4444; --r2:#cc2222;
-  --y:#ffcc00; --y2:#cc9900;
-  --b2:#4488ff; --pu:#9945ff; --cy:#00c2ff; --or:#ff6b35;
-  --bg:#060606; --c1:#0d0d0d; --c2:#111; --c3:#161616;
-  --bd:#1a2a1a; --bd2:#223322;
-  --t:#99ffbb; --t2:#557755; --t3:#334433;
-  --font:'Share Tech Mono',monospace;
-  --head:'Orbitron',monospace;
+  --navy:#080e1a;
+  --navy2:#0d1424;
+  --navy3:#111b2e;
+  --navy4:#16223a;
+  --gold:#e8a020;
+  --gold2:#f5b84a;
+  --gold3:#c07010;
+  --gold-dim:#e8a02022;
+  --ice:#60a5fa;
+  --ice2:#93c5fd;
+  --green:#34d399;
+  --red:#f87171;
+  --amber:#fbbf24;
+  --text:#e8edf5;
+  --text2:#8899bb;
+  --text3:#445577;
+  --border:#1e2d47;
+  --font:'Syne Mono',monospace;
+  --head:'Syne',sans-serif;
 }
 html{scroll-behavior:smooth}
-body{font-family:var(--font);background:var(--bg);color:var(--t);min-height:100vh;overflow-x:hidden}
+body{font-family:var(--font);background:var(--navy);color:var(--text);min-height:100vh;overflow-x:hidden}
 
-/* scanline */
-body::before{content:'';position:fixed;inset:0;
-  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,136,.01) 2px,rgba(0,255,136,.01) 4px);
-  pointer-events:none;z-index:9999}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:var(--navy)}
+::-webkit-scrollbar-thumb{background:var(--navy4)}
+::-webkit-scrollbar-thumb:hover{background:var(--gold3)}
 
-/* scrollbar */
-::-webkit-scrollbar{width:4px;height:4px}
-::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:var(--g3)}
-::-webkit-scrollbar-thumb:hover{background:var(--g2)}
-
-/* ─── TOPBAR ───────────────────────────────────────────────────── */
-#topbar{
+/* ── HEADER ─────────────────────────────────────────────── */
+#header{
   display:flex;align-items:center;justify-content:space-between;
-  padding:10px 18px;border-bottom:1px solid var(--bd);
-  background:var(--c1);position:sticky;top:0;z-index:100;
+  padding:16px 24px;
+  background:var(--navy2);
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:100;
 }
-.logo{font-family:var(--head);font-size:14px;color:var(--g);letter-spacing:4px}
-.sub{font-size:9px;color:var(--t2);letter-spacing:1px;margin-top:2px}
-.topbar-r{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
-.chain{font-size:9px;padding:3px 9px;background:#001a0d;border:1px solid var(--g);color:var(--g);letter-spacing:3px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-mark{
+  width:38px;height:38px;
+  background:var(--gold);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--head);font-weight:800;font-size:13px;
+  color:var(--navy);letter-spacing:-1px;flex-shrink:0;
+}
+.brand-name{font-family:var(--head);font-weight:800;font-size:18px;color:var(--text);letter-spacing:1px}
+.brand-sub{font-size:9px;color:var(--text2);letter-spacing:3px;text-transform:uppercase;margin-top:1px}
 
-/* api-mode badge — shows LIVE vs FALLBACK */
-#api-badge{font-size:8px;padding:2px 8px;border:1px solid;letter-spacing:2px;cursor:default}
-#api-badge.live{border-color:var(--g);color:var(--g);background:#001a0d}
-#api-badge.fallback{border-color:var(--y);color:var(--y);background:#1a1100}
-#api-badge.off{border-color:var(--t2);color:var(--t2)}
+.header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 
-.pulse{width:7px;height:7px;border-radius:50%;background:var(--g);opacity:.2}
-.pulse.live{opacity:1;animation:pulse 1.5s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.1}}
-#scan-lbl{font-size:9px;color:var(--t2);letter-spacing:1px}
+/* status dot */
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0}
+.sdot.live{background:var(--green);box-shadow:0 0 6px var(--green);animation:glow 2s infinite}
+.sdot.warn{background:var(--amber)}
+.sdot.dead{background:var(--red)}
+@keyframes glow{0%,100%{opacity:1}50%{opacity:.4}}
+#scan-txt{font-size:10px;color:var(--text2);letter-spacing:2px}
 
-/* ─── BUTTONS ──────────────────────────────────────────────────── */
+/* ── BUTTONS ────────────────────────────────────────────── */
 .btn{
-  font-family:var(--font);font-size:10px;padding:5px 12px;
-  border:1px solid var(--t2);background:transparent;color:var(--t2);
-  cursor:pointer;letter-spacing:1px;transition:all .15s;white-space:nowrap;
+  font-family:var(--font);font-size:10px;padding:8px 16px;
+  border:none;cursor:pointer;letter-spacing:2px;
+  text-transform:uppercase;transition:all .15s;white-space:nowrap;
 }
-.btn:hover{border-color:var(--g);color:var(--g)}
-.btn-red{border-color:var(--r);color:var(--r)}
-.btn-red:hover{background:#1a0000}
-.btn-green{border-color:var(--g);color:var(--g);background:#001a0d}
-.btn-green:hover{background:#003322}
-.btn-sm{font-size:8px;padding:2px 8px}
-.btn-yellow{border-color:var(--y);color:var(--y)}
-.btn-yellow:hover{background:#1a1100}
+.btn-primary{background:var(--gold);color:var(--navy);font-weight:bold}
+.btn-primary:hover{background:var(--gold2)}
+.btn-danger{background:transparent;border:1px solid var(--red);color:var(--red)}
+.btn-danger:hover{background:rgba(248,113,113,.1)}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text2)}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold)}
+.btn-sm{font-size:9px;padding:5px 11px}
+.btn-fallback{background:transparent;border:1px solid var(--border);color:var(--text3);font-size:9px;padding:5px 11px}
+.btn-fallback.active{border-color:var(--amber);color:var(--amber)}
 
-/* ─── WALLET BAR ───────────────────────────────────────────────── */
-#wallet-bar{
-  display:none;align-items:center;gap:12px;
-  padding:7px 18px;background:#080808;
-  border-bottom:1px solid var(--bd);font-size:10px;flex-wrap:wrap;
+/* ── WALLET STRIP ───────────────────────────────────────── */
+#wallet-strip{
+  display:none;
+  background:var(--navy3);
+  border-bottom:1px solid var(--border);
+  padding:8px 24px;
+  font-size:10px;
+  gap:20px;align-items:center;flex-wrap:wrap;
 }
-.wlabel{color:var(--t2);font-size:8px;letter-spacing:1px;text-transform:uppercase}
-.wval{color:var(--g)}
-#w-bal{color:var(--y);font-size:11px}
+.wl{color:var(--text3);font-size:9px;letter-spacing:2px;text-transform:uppercase}
+.wv{color:var(--gold);letter-spacing:1px}
+#w-bal{color:var(--gold2);font-size:12px;font-family:var(--head);font-weight:600}
+#rpc-chip{font-size:8px;padding:2px 8px;background:var(--navy4);border:1px solid var(--border);color:var(--text3);letter-spacing:1px}
+#rpc-chip.ok{border-color:var(--green);color:var(--green)}
+#rpc-chip.err{border-color:var(--red);color:var(--red)}
 
-/* ─── STATS ────────────────────────────────────────────────────── */
-#stats{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--bd);border-bottom:1px solid var(--bd)}
-.sc{background:var(--c1);padding:10px 8px;text-align:center}
-.sl{font-size:8px;color:var(--t2);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
-.sv{font-family:var(--head);font-size:20px;font-weight:bold;color:var(--g);transition:color .3s}
-.sc.ry .sv{color:var(--y)} .sc.rr .sv{color:var(--r)}
+/* ── API ROW ────────────────────────────────────────────── */
+#api-row{
+  display:flex;align-items:center;
+  padding:0 24px;
+  background:var(--navy2);
+  border-bottom:1px solid var(--border);
+  gap:0;overflow:hidden;
+}
+.api-pill{
+  display:flex;align-items:center;gap:7px;
+  padding:8px 20px;border-right:1px solid var(--border);
+  font-size:9px;letter-spacing:1px;flex:1;
+}
+.api-pill:last-child{border-right:none;flex:2}
+.an{color:var(--text3);text-transform:uppercase}
+.av{margin-left:auto;font-size:8px;color:var(--text3)}
+.av.live{color:var(--green)}.av.warn{color:var(--amber)}.av.dead{color:var(--red)}
 
-/* ─── SETTINGS ─────────────────────────────────────────────────── */
-#settings{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--bd);border-bottom:1px solid var(--bd)}
-.sbox{background:var(--c2);padding:10px 13px}
-.stitle{font-size:8px;color:var(--t2);letter-spacing:2px;text-transform:uppercase;margin-bottom:9px;border-bottom:1px solid var(--bd);padding-bottom:5px}
-.srow{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
-.skey{font-size:9px;color:var(--t2)}
-.sinput{font-family:var(--font);font-size:11px;background:#080808;border:1px solid var(--bd);color:var(--g);padding:3px 6px;width:80px;text-align:right;transition:border-color .15s}
-.sinput:focus{outline:none;border-color:var(--g)}
-.stoggle{display:flex;gap:3px}
-.tog{font-family:var(--font);font-size:9px;padding:3px 8px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer;transition:all .15s}
-.tog.on{border-color:var(--g);color:var(--g);background:#001a0d}
+/* ── STATS ROW ──────────────────────────────────────────── */
+#stats{
+  display:grid;grid-template-columns:repeat(6,1fr);
+  gap:1px;background:var(--border);
+  border-bottom:1px solid var(--border);
+}
+.stat{
+  background:var(--navy2);
+  padding:14px 16px;
+}
+.stat-label{font-size:8px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px}
+.stat-val{
+  font-family:var(--head);font-weight:600;font-size:22px;
+  color:var(--text);transition:color .3s;
+}
+.stat-val.gold{color:var(--gold)}
+.stat-val.warn{color:var(--amber)}
+.stat-val.danger{color:var(--red)}
+.stat-val.green{color:var(--green)}
 
-/* ─── TICKER TAPE ──────────────────────────────────────────────── */
-#ticker-wrap{border-bottom:1px solid var(--bd);background:#090909;overflow:hidden;height:26px;display:flex;align-items:center}
-#ticker-inner{display:flex;gap:0;white-space:nowrap;animation:ticker 35s linear infinite}
+/* ── SETTINGS ───────────────────────────────────────────── */
+#settings{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:1px;background:var(--border);
+  border-bottom:1px solid var(--border);
+}
+.setting-block{background:var(--navy2);padding:14px 18px}
+.sb-title{
+  font-family:var(--head);font-weight:600;font-size:10px;
+  color:var(--text2);letter-spacing:3px;text-transform:uppercase;
+  margin-bottom:12px;padding-bottom:8px;
+  border-bottom:1px solid var(--border);
+}
+.srow{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.sk{font-size:9px;color:var(--text2);letter-spacing:.5px}
+.sk.tier1{color:var(--gold)}
+.sk.tier2{color:var(--ice2)}
+.sinput{
+  font-family:var(--font);font-size:11px;
+  background:var(--navy);border:1px solid var(--border);
+  color:var(--gold);padding:4px 8px;width:80px;text-align:right;
+  transition:border-color .15s;outline:none;
+}
+.sinput:focus{border-color:var(--gold3)}
+.toggle-pair{display:flex;gap:2px}
+.tog{
+  font-family:var(--font);font-size:8px;padding:4px 10px;
+  border:1px solid var(--border);background:transparent;
+  color:var(--text3);cursor:pointer;transition:all .15s;letter-spacing:1px;
+}
+.tog.on{background:var(--gold-dim);border-color:var(--gold3);color:var(--gold)}
+
+/* ── TICKER ─────────────────────────────────────────────── */
+#ticker-wrap{
+  overflow:hidden;height:28px;display:flex;align-items:center;
+  background:var(--navy3);border-bottom:1px solid var(--border);
+}
+#ticker-inner{display:flex;white-space:nowrap;animation:ticker 35s linear infinite}
 @keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-.tick-item{font-size:9px;padding:0 18px;color:var(--t2);letter-spacing:1px;border-right:1px solid var(--bd)}
-.tick-item.up{color:var(--g)} .tick-item.dn{color:var(--r)}
+.tick{font-size:9px;padding:0 20px;color:var(--text3);border-right:1px solid var(--border);letter-spacing:1px}
+.tick.up{color:var(--green)}.tick.dn{color:var(--red)}
 
-/* ─── MAIN 3-COLUMN GRID ───────────────────────────────────────── */
-#main{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--bd)}
-.panel{background:var(--c1);padding:12px;min-height:240px}
-.ptitle{
-  font-size:9px;color:var(--t2);letter-spacing:2px;text-transform:uppercase;
-  margin-bottom:10px;border-bottom:1px solid var(--bd);padding-bottom:6px;
+/* ── MAIN GRID ──────────────────────────────────────────── */
+#panels{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border)}
+.panel{background:var(--navy2);padding:16px;min-height:260px}
+.panel-title{
+  font-family:var(--head);font-weight:600;font-size:10px;
+  letter-spacing:3px;text-transform:uppercase;
+  color:var(--text2);margin-bottom:14px;
   display:flex;justify-content:space-between;align-items:center;
 }
-.ptitle span{color:var(--g)}
-.empty{text-align:center;padding:40px 0}
-.ei{font-size:10px;color:var(--bd2);margin-bottom:6px;letter-spacing:1px}
-.et{font-size:9px;color:var(--t2)}
-
-/* ─── TOKEN ROWS ───────────────────────────────────────────────── */
-.trow{display:flex;align-items:center;gap:5px;padding:5px 0;border-bottom:1px solid var(--bd);font-size:9px;animation:fadeIn .3s ease}
-@keyframes fadeIn{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:none}}
-.tn{color:var(--g);font-weight:bold;font-size:10px;letter-spacing:1px}
-.ta{color:var(--t2);font-size:8px}
-.ts{color:var(--y);white-space:nowrap}
-.tup{color:var(--g);white-space:nowrap} .tdn{color:var(--r);white-space:nowrap}
-
-/* score badge */
-.score-badge{
-  font-size:8px;padding:1px 5px;border:1px solid;
-  font-family:var(--font);white-space:nowrap;
+.panel-count{
+  font-size:10px;color:var(--gold);
+  background:var(--gold-dim);padding:2px 8px;
+  border:1px solid var(--gold3);letter-spacing:1px;
 }
-.score-high{border-color:var(--g);color:var(--g);background:#001a0d}
-.score-mid{border-color:var(--y);color:var(--y);background:#1a1100}
-.score-low{border-color:var(--r);color:var(--r);background:#1a0000}
+.empty-state{text-align:center;padding:50px 0}
+.empty-icon{font-size:11px;color:var(--text3);letter-spacing:2px;margin-bottom:6px}
+.empty-msg{font-size:9px;color:var(--text3);letter-spacing:1px}
 
-/* honeypot warning */
-.hp-warn{font-size:8px;color:var(--r);letter-spacing:1px;padding:1px 5px;border:1px solid var(--r);background:#1a0000}
+/* ── TOKEN CARDS ────────────────────────────────────────── */
+.tok{
+  border-left:2px solid var(--border);
+  padding:8px 0 8px 10px;margin-bottom:6px;
+  animation:slideIn .25s ease;
+  transition:border-color .2s;
+}
+.tok:hover{border-left-color:var(--gold)}
+@keyframes slideIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+.tok-name{font-family:var(--head);font-weight:600;font-size:11px;color:var(--text);letter-spacing:.5px}
+.tok-addr{font-size:8px;color:var(--text3);margin-top:1px;letter-spacing:1px}
+.tok-checks{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap}
+.chip{
+  font-size:7px;padding:2px 6px;border:1px solid;letter-spacing:.5px;
+}
+.chip-ok{border-color:rgba(52,211,153,.3);color:var(--green);background:rgba(52,211,153,.07)}
+.chip-warn{border-color:rgba(251,191,36,.3);color:var(--amber);background:rgba(251,191,36,.07)}
+.chip-bad{border-color:rgba(248,113,113,.3);color:var(--red);background:rgba(248,113,113,.07)}
+.chip-dim{border-color:var(--border);color:var(--text3)}
+.tok-actions{display:flex;gap:5px;margin-top:6px;align-items:center}
 
-/* ─── LINKS ────────────────────────────────────────────────────── */
+/* score pill */
+.score{
+  font-family:var(--head);font-weight:600;font-size:10px;
+  padding:2px 8px;
+}
+.score-hi{background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.3)}
+.score-md{background:rgba(251,191,36,.1);color:var(--amber);border:1px solid rgba(251,191,36,.3)}
+.score-lo{background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.3)}
+
+/* ext links */
 .xlink{
-  display:inline-flex;align-items:center;
-  font-family:var(--font);font-size:8px;padding:1px 6px;
-  text-decoration:none;cursor:pointer;letter-spacing:1px;
-  white-space:nowrap;transition:all .15s;flex-shrink:0;border:1px solid;
+  font-family:var(--font);font-size:8px;padding:3px 8px;
+  text-decoration:none;border:1px solid var(--border);
+  color:var(--text3);transition:all .15s;letter-spacing:1px;white-space:nowrap;
 }
-.xlink-sol{color:var(--pu);border-color:#4422aa} .xlink-sol:hover{background:#1a0a30;border-color:var(--pu)}
-.xlink-dex{color:var(--cy);border-color:#004466} .xlink-dex:hover{background:#001a22;border-color:var(--cy)}
-.xlink-bird{color:var(--or);border-color:#552200} .xlink-bird:hover{background:#1a0800;border-color:var(--or)}
-.xlink-rug{color:var(--r);border-color:#440000}  .xlink-rug:hover{background:#1a0000;border-color:var(--r2)}
+.xlink:hover{border-color:var(--ice);color:var(--ice)}
+.xlink-rug:hover{border-color:var(--red);color:var(--red)}
 
 /* snipe button */
-.snipe-btn{
-  font-family:var(--font);font-size:8px;padding:3px 8px;
-  border:1px solid var(--g);background:#001a0d;color:var(--g);
-  cursor:pointer;letter-spacing:1px;white-space:nowrap;transition:all .15s;
+.snipe{
+  font-family:var(--font);font-size:9px;padding:4px 12px;
+  background:var(--gold);color:var(--navy);border:none;
+  cursor:pointer;letter-spacing:2px;font-weight:bold;
+  transition:background .15s;white-space:nowrap;margin-left:auto;
 }
-.snipe-btn:hover{background:#003322}
-.snipe-btn:disabled{opacity:.3;cursor:not-allowed}
+.snipe:hover{background:var(--gold2)}
+.snipe:disabled{opacity:.3;cursor:not-allowed;background:var(--text3)}
 
-/* ─── LOG ──────────────────────────────────────────────────────── */
-#log-wrap{background:var(--c1);border-top:1px solid var(--bd);padding:10px 14px}
-.log-head{font-size:9px;color:var(--t2);letter-spacing:2px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase}
-.log-head span{color:var(--g)}
-#log-feed{max-height:180px;overflow-y:auto}
-.ll{font-size:9px;padding:3px 0;border-bottom:1px solid #0d140d;display:flex;gap:8px;align-items:flex-start;animation:fadeIn .25s ease}
-.lt{color:var(--t3);min-width:50px;flex-shrink:0}
-.ll-row{display:flex;align-items:center;flex-wrap:wrap;gap:3px;flex:1}
-.lm{flex:1;min-width:0}
-.lm.g{color:var(--g2)} .lm.y{color:var(--y)} .lm.r{color:var(--r)} .lm.w{color:var(--t)}
-
-/* ─── MODAL ────────────────────────────────────────────────────── */
-#snipe-modal{
-  display:none;background:rgba(0,0,0,.92);
-  position:fixed;inset:0;align-items:center;justify-content:center;z-index:500;
-}
-#snipe-modal.open{display:flex}
-.mbox{
-  background:#0d0d0d;border:1px solid var(--g);
-  padding:22px;max-width:380px;width:92%;
-  font-family:var(--font);animation:fadeIn .2s ease;
-}
-.mtitle{font-family:var(--head);font-size:12px;color:var(--g);letter-spacing:3px;margin-bottom:14px}
-.mrow{display:flex;justify-content:space-between;padding:4px 0;font-size:10px;border-bottom:1px solid var(--bd)}
-.mkey{color:var(--t2)} .mval{color:var(--t)}
-.mlinks{display:flex;gap:5px;margin:10px 0;flex-wrap:wrap}
-.mwarning{font-size:9px;color:var(--r);margin:8px 0;line-height:1.6;padding:8px;border:1px solid #330000;background:#0a0000}
-.mbtn-row{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
-
-/* honeypot block in modal */
-#modal-hp-block{display:none;font-size:9px;color:var(--r);padding:8px;border:1px solid var(--r);background:#1a0000;margin:8px 0;line-height:1.6}
-
-/* jupiter status */
-#jup-status{font-size:9px;color:var(--t2);padding:6px 0;min-height:20px}
-
-/* ─── TOAST ────────────────────────────────────────────────────── */
-#toast{position:fixed;bottom:20px;right:20px;background:#0d0d0d;border:1px solid var(--g);padding:10px 16px;font-size:10px;color:var(--g);z-index:999;display:none;animation:fadeIn .2s ease;max-width:300px}
-#toast.red{border-color:var(--r);color:var(--r)} #toast.yellow{border-color:var(--y);color:var(--y)}
-
-/* ─── FOOTER ───────────────────────────────────────────────────── */
-#footer{padding:7px 18px;font-size:8px;color:var(--t3);border-top:1px solid var(--bd);background:var(--c1);display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-.flink{color:var(--t3);text-decoration:none;font-size:8px;letter-spacing:1px;transition:color .15s}
-.flink:hover{color:var(--b2)}
-.fsep{color:var(--bd2)}
-
-
-/* ─── API STATUS BAR ───────────────────────────────────────────── */
-#api-status-bar{
-  display:flex;align-items:center;gap:0;
-  border-bottom:1px solid var(--bd);background:#090909;
-  overflow:hidden;
-}
-.api-cell{
-  flex:1;display:flex;align-items:center;gap:8px;
-  padding:6px 14px;border-right:1px solid var(--bd);
-  font-size:9px;letter-spacing:1px;
-}
-.api-cell:last-child{border-right:none}
-.api-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;transition:background .3s}
-.api-dot.live{background:var(--g);box-shadow:0 0 4px var(--g);animation:pulse 2s infinite}
-.api-dot.warn{background:var(--y)}
-.api-dot.dead{background:var(--r)}
-.api-dot.off{background:var(--t2);opacity:.3}
-.api-name{color:var(--t2)}
-.api-val{color:var(--g);margin-left:auto;font-size:8px}
-.api-val.warn{color:var(--y)} .api-val.dead{color:var(--r)}
-
-/* ─── TOKEN CHECK BADGES ───────────────────────────────────────── */
-.check-row{display:flex;gap:3px;margin-top:2px;flex-wrap:wrap}
-.ck{font-size:7px;padding:1px 4px;border:1px solid;letter-spacing:.5px;border-radius:1px}
-.ck-ok{border-color:#003322;color:var(--g2);background:#001a0d}
-.ck-warn{border-color:#332200;color:var(--y);background:#1a1100}
-.ck-bad{border-color:#330000;color:var(--r);background:#1a0000}
-.ck-load{border-color:var(--bd);color:var(--t2)}
-
-/* ─── POSITION TIERS ──────────────────────────────────────────────── */
+/* ── POSITION CARDS ─────────────────────────────────────── */
 .pos-card{
-  border:1px solid var(--bd);background:var(--c2);
-  margin-bottom:6px;padding:6px 8px;animation:fadeIn .3s ease;
+  border-left:3px solid var(--gold3);
+  background:var(--navy3);
+  padding:10px 12px;margin-bottom:8px;
+  animation:slideIn .25s ease;
 }
-.pos-header{display:flex;align-items:center;gap:6px;margin-bottom:5px}
-.pos-name{color:var(--g);font-weight:bold;font-size:10px;letter-spacing:1px;flex:1}
-.pos-pnl{font-size:11px;white-space:nowrap}
-.pos-pnl.up{color:var(--g)} .pos-pnl.dn{color:var(--r)}
-.tier-bar{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px}
-.tier{
-  font-size:8px;padding:2px 7px;border:1px solid;
-  letter-spacing:.5px;display:flex;align-items:center;gap:3px;
+.pos-card.closed{border-left-color:var(--border)}
+.pos-card.closed.win{border-left-color:var(--green)}
+.pos-card.closed.loss{border-left-color:var(--red)}
+.pos-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.pos-name{font-family:var(--head);font-weight:600;font-size:11px;flex:1;color:var(--text)}
+.pos-pnl{font-family:var(--head);font-weight:600;font-size:12px;white-space:nowrap}
+.pos-pnl.up{color:var(--green)}.pos-pnl.dn{color:var(--red)}
+.tier-row{display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap}
+.tier-chip{
+  font-size:8px;padding:3px 8px;border:1px solid var(--border);
+  color:var(--text3);letter-spacing:.5px;transition:all .3s;
 }
-.tier.pending{border-color:var(--bd);color:var(--t2)}
-.tier.hit{border-color:var(--g);color:var(--g);background:#001a0d}
-.tier.missed{border-color:var(--r);color:var(--r);background:#1a0000}
-.tier.moon{border-color:var(--pu);color:var(--pu);background:#1a0030}
-.pos-meta{display:flex;gap:8px;font-size:8px;color:var(--t2);flex-wrap:wrap}
-.pos-links{display:flex;gap:3px;margin-top:4px}
-.remaining-bar{
-  height:3px;background:var(--bd);margin:4px 0;border-radius:1px;overflow:hidden;
-}
-.remaining-fill{height:100%;background:var(--g);transition:width .5s ease}
+.tier-chip.pending{border-color:var(--border);color:var(--text3)}
+.tier-chip.hit{border-color:var(--green);color:var(--green);background:rgba(52,211,153,.08)}
+.tier-chip.moon{border-color:var(--ice);color:var(--ice);background:rgba(96,165,250,.08)}
+.tier-chip.missed{border-color:var(--red);color:var(--red);opacity:.5}
+.rem-bar{height:2px;background:var(--navy);margin-bottom:6px;overflow:hidden}
+.rem-fill{height:100%;background:var(--gold);transition:width .6s ease}
+.pos-meta{font-size:8px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap;margin-bottom:5px}
+.pos-links{display:flex;gap:4px;flex-wrap:wrap}
 
-/* ─── RESPONSIVE ───────────────────────────────────────────────── */
+/* ── LOG ────────────────────────────────────────────────── */
+#log-wrap{background:var(--navy2);border-top:1px solid var(--border);padding:12px 24px}
+.log-hd{
+  font-family:var(--head);font-size:10px;font-weight:600;
+  color:var(--text2);letter-spacing:3px;text-transform:uppercase;
+  margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;
+}
+.log-hd span{color:var(--gold)}
+#log-feed{max-height:170px;overflow-y:auto}
+.ll{font-size:9px;padding:3px 0;border-bottom:1px solid rgba(30,45,71,.5);display:flex;gap:10px;align-items:flex-start;animation:slideIn .2s ease}
+.lt{color:var(--text3);min-width:50px;flex-shrink:0}
+.ll-row{display:flex;align-items:center;flex-wrap:wrap;gap:4px;flex:1}
+.lm{flex:1;min-width:0;line-height:1.5}
+.lm.g{color:var(--green)}.lm.y{color:var(--amber)}.lm.r{color:var(--red)}.lm.w{color:var(--text)}
+
+/* ── MODAL ──────────────────────────────────────────────── */
+#modal-wrap{display:none;position:fixed;inset:0;background:rgba(8,14,26,.95);align-items:center;justify-content:center;z-index:500}
+#modal-wrap.open{display:flex}
+.modal{
+  background:var(--navy2);border:1px solid var(--border);
+  border-top:3px solid var(--gold);
+  padding:28px;max-width:420px;width:92%;
+  animation:slideIn .2s ease;
+}
+.modal-title{
+  font-family:var(--head);font-weight:800;font-size:16px;
+  color:var(--gold);letter-spacing:2px;margin-bottom:18px;
+}
+.mrow{display:flex;justify-content:space-between;padding:6px 0;font-size:10px;border-bottom:1px solid var(--border)}
+.mk{color:var(--text3)}.mv{color:var(--text)}
+.mlinks{display:flex;gap:6px;margin:12px 0;flex-wrap:wrap}
+#jup-status{font-size:9px;color:var(--text2);padding:6px 0;min-height:20px}
+.mwarn{font-size:9px;color:var(--red);margin:10px 0;padding:10px;border-left:2px solid var(--red);background:rgba(248,113,113,.05);line-height:1.6}
+.mbtn-row{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+#modal-hp{display:none;font-size:9px;color:var(--red);padding:10px;border-left:2px solid var(--red);background:rgba(248,113,113,.05);margin-bottom:10px;line-height:1.5}
+
+/* ── TOAST ──────────────────────────────────────────────── */
+#toast{
+  position:fixed;bottom:24px;right:24px;
+  background:var(--navy3);border-left:3px solid var(--gold);
+  padding:12px 18px;font-size:10px;color:var(--text);
+  z-index:999;display:none;max-width:300px;
+  animation:slideIn .2s ease;letter-spacing:.5px;
+}
+#toast.red{border-left-color:var(--red);color:var(--red)}
+#toast.amber{border-left-color:var(--amber);color:var(--amber)}
+
+/* ── FOOTER ─────────────────────────────────────────────── */
+#footer{
+  padding:10px 24px;font-size:8px;color:var(--text3);
+  border-top:1px solid var(--border);background:var(--navy2);
+  display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+  letter-spacing:1px;
+}
+.fl{color:var(--text3);text-decoration:none;transition:color .15s}
+.fl:hover{color:var(--gold)}
+.fsep{color:var(--border)}
+
+/* ── RESPONSIVE ─────────────────────────────────────────── */
 @media(max-width:900px){
   #stats{grid-template-columns:repeat(3,1fr)}
   #settings{grid-template-columns:1fr}
-  #main{grid-template-columns:1fr}
+  #panels{grid-template-columns:1fr}
+  #api-row{flex-wrap:wrap}
+  .api-pill{min-width:50%;border-bottom:1px solid var(--border)}
 }
 </style>
 </head>
 <body>
 
-<!-- ══ TOPBAR ══════════════════════════════════════════════════ -->
-<div id="topbar">
-  <div>
-    <div class="logo">BankMaker7</div>
-    <div class="sub">PHANTOM WALLET &nbsp;·&nbsp; PUMPPORTAL + DEXSCREENER &nbsp;·&nbsp; JUPITER ROUTING</div>
+<!-- HEADER -->
+<div id="header">
+  <div class="brand">
+    <div class="brand-mark">B7</div>
+    <div>
+      <div class="brand-name">BANKMAKER7</div>
+      <div class="brand-sub">Solana Auto-Sniper · PumpPortal + DexScreener · Jupiter</div>
+    </div>
   </div>
-  <div class="topbar-r">
-    <button class="btn btn-red"    id="main-btn"  onclick="toggleBot()">START BOT</button>
-    <button class="btn btn-yellow" id="fallback-btn" onclick="toggleFallback()" title="Switch between PumpPortal and DexScreener feed">FALLBACK</button>
-    <div class="pulse" id="pdot"></div>
-    <span id="scan-lbl">IDLE</span>
-    <div id="api-badge" class="off">OFF</div>
-    <div class="chain">SOLANA</div>
-    <button class="btn" id="wallet-btn" onclick="connectWallet()">CONNECT PHANTOM</button>
+  <div class="header-right">
+    <button class="btn btn-primary" id="main-btn" onclick="toggleBot()">START BOT</button>
+    <button class="btn btn-fallback" id="fb-btn" onclick="toggleFallback()">FALLBACK</button>
+    <div class="sdot" id="sdot"></div>
+    <span id="scan-txt">IDLE</span>
+    <button class="btn btn-ghost btn-sm" id="wallet-btn" onclick="connectWallet()">CONNECT PHANTOM</button>
   </div>
 </div>
 
-<!-- ══ WALLET BAR ═══════════════════════════════════════════════ -->
-<div id="wallet-bar">
-  <span class="wlabel">Wallet</span>
-  <span class="wval" id="w-addr">—</span>
-  <a id="w-solscan" href="#" target="_blank" class="xlink xlink-sol">SOLSCAN ↗</a>
-  <span class="wlabel" style="margin-left:8px">Balance</span>
+<!-- WALLET STRIP -->
+<div id="wallet-strip">
+  <span class="wl">Wallet</span>
+  <span class="wv" id="w-addr">—</span>
+  <a id="w-scan" href="#" target="_blank" class="xlink" style="font-size:8px">SOLSCAN ↗</a>
+  <span class="wl" style="margin-left:12px">Balance</span>
   <span id="w-bal">— SOL</span>
-  <span class="wlabel" style="margin-left:8px">RPC</span>
-  <span id="rpc-lbl" style="font-size:9px;color:var(--t2)">—</span>
-  <button class="btn btn-sm" style="margin-left:auto" onclick="refreshBalance()">REFRESH BAL</button>
-  <button class="btn btn-sm" onclick="disconnectWallet()">DISCONNECT</button>
+  <span id="rpc-chip">RPC</span>
+  <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="refreshBalance()">REFRESH</button>
+  <button class="btn btn-ghost btn-sm" onclick="disconnectWallet()">DISCONNECT</button>
 </div>
 
-
-<!-- ══ API STATUS BAR ════════════════════════════════════════════ -->
-<div id="api-status-bar">
-  <div class="api-cell">
-    <div class="api-dot off" id="dot-pump"></div>
-    <span class="api-name">PUMPPORTAL</span>
-    <span class="api-val off" id="val-pump">OFFLINE</span>
-  </div>
-  <div class="api-cell">
-    <div class="api-dot off" id="dot-dex"></div>
-    <span class="api-name">DEXSCREENER</span>
-    <span class="api-val off" id="val-dex">OFFLINE</span>
-  </div>
-  <div class="api-cell">
-    <div class="api-dot off" id="dot-rug"></div>
-    <span class="api-name">RUGCHECK</span>
-    <span class="api-val off" id="val-rug">OFFLINE</span>
-  </div>
-  <div class="api-cell">
-    <div class="api-dot off" id="dot-jup"></div>
-    <span class="api-name">JUPITER</span>
-    <span class="api-val off" id="val-jup">OFFLINE</span>
-  </div>
-  <div class="api-cell" style="flex:2">
-    <span class="api-name">API CALLS TODAY</span>
-    <span class="api-val" id="val-calls" style="color:var(--t2)">0 calls / 0 errors</span>
-  </div>
+<!-- API ROW -->
+<div id="api-row">
+  <div class="api-pill"><div class="sdot off" id="dot-pump"></div><span class="an">PumpPortal</span><span class="av" id="av-pump">offline</span></div>
+  <div class="api-pill"><div class="sdot off" id="dot-dex"></div><span class="an">DexScreener</span><span class="av" id="av-dex">offline</span></div>
+  <div class="api-pill"><div class="sdot off" id="dot-rug"></div><span class="an">RugCheck</span><span class="av" id="av-rug">offline</span></div>
+  <div class="api-pill"><div class="sdot off" id="dot-jup"></div><span class="an">Jupiter</span><span class="av" id="av-jup">offline</span></div>
+  <div class="api-pill"><span class="an">API Calls</span><span class="av" id="av-calls">0 / 0 errors</span></div>
 </div>
 
-<!-- ══ STATS ════════════════════════════════════════════════════ -->
+<!-- STATS -->
 <div id="stats">
-  <div class="sc">         <div class="sl">Scanned</div>   <div class="sv" id="s1">0</div></div>
-  <div class="sc">         <div class="sl">Tracked</div>   <div class="sv" id="s2">0</div></div>
-  <div class="sc">         <div class="sl">Snipes</div>    <div class="sv" id="s3">0</div></div>
-  <div class="sc">         <div class="sl">Profit (SOL)</div><div class="sv" id="s4" style="font-size:14px">0.000</div></div>
-  <div class="sc ry">      <div class="sl">Early</div>     <div class="sv" id="s5">0</div></div>
-  <div class="sc rr">      <div class="sl">Rug Blocked</div><div class="sv" id="s6">0</div></div>
+  <div class="stat"><div class="stat-label">Scanned</div><div class="stat-val" id="s1">0</div></div>
+  <div class="stat"><div class="stat-label">Tracked</div><div class="stat-val" id="s2">0</div></div>
+  <div class="stat"><div class="stat-label">Snipes</div><div class="stat-val gold" id="s3">0</div></div>
+  <div class="stat"><div class="stat-label">Profit (SOL)</div><div class="stat-val gold" id="s4" style="font-size:18px">0.000</div></div>
+  <div class="stat"><div class="stat-label">Early Watch</div><div class="stat-val warn" id="s5">0</div></div>
+  <div class="stat"><div class="stat-label">Rug Blocked</div><div class="stat-val danger" id="s6">0</div></div>
 </div>
 
-<!-- ══ SETTINGS ═════════════════════════════════════════════════ -->
+<!-- SETTINGS -->
 <div id="settings">
-  <div class="sbox">
-    <div class="stitle">Snipe Settings</div>
-    <div class="srow"><span class="skey">Buy amount (SOL)</span> <input class="sinput" id="cfg-sol"   type="number" value="0.1"   step="0.05"  min="0.01" max="10"></div>
-    <div class="srow"><span class="skey">Min score</span>        <input class="sinput" id="cfg-score" type="number" value="75"    step="5"     min="50" max="99"></div>
-    <div class="srow"><span class="skey">Slippage %</span>       <input class="sinput" id="cfg-slip"  type="number" value="15"    step="1"     min="1" max="50"></div>
-    <div class="srow"><span class="skey">Priority fee (SOL)</span><input class="sinput" id="cfg-fee"  type="number" value="0.001" step="0.0005" min="0"></div>
+
+  <div class="setting-block">
+    <div class="sb-title">Snipe Settings</div>
+    <div class="srow"><span class="sk">Buy amount (SOL)</span>   <input class="sinput" id="cfg-sol"   type="number" value="0.1"   step="0.05" min="0.01" max="10"></div>
+    <div class="srow"><span class="sk">Min score</span>          <input class="sinput" id="cfg-score" type="number" value="75"   step="5"    min="50" max="99"></div>
+    <div class="srow"><span class="sk">Slippage %</span>         <input class="sinput" id="cfg-slip"  type="number" value="15"   step="1"    min="1" max="50"></div>
+    <div class="srow"><span class="sk">Priority fee (SOL)</span> <input class="sinput" id="cfg-fee"   type="number" value="0.001" step="0.0005" min="0"></div>
   </div>
-  <div class="sbox">
-    <div class="stitle">Exit Strategy — Scaled Sells</div>
-    <div class="srow">
-      <span class="skey" style="color:var(--g)">Tier 1 — first sell</span>
-    </div>
-    <div class="srow"><span class="skey">At profit %</span>    <input class="sinput" id="cfg-tp1"      type="number" value="100" step="10" min="10" title="Sell first chunk when up this %"></div>
-    <div class="srow"><span class="skey">Sell % of bag</span>  <input class="sinput" id="cfg-tp1-pct"  type="number" value="50"  step="5"  min="5" max="95" title="What % of your position to sell at Tier 1"></div>
-    <div class="srow" style="margin-top:6px">
-      <span class="skey" style="color:var(--y)">Tier 2 — second sell</span>
-    </div>
-    <div class="srow"><span class="skey">At profit %</span>    <input class="sinput" id="cfg-tp2"      type="number" value="300" step="25" min="20" title="Sell second chunk when up this %"></div>
-    <div class="srow"><span class="skey">Sell % of remaining</span><input class="sinput" id="cfg-tp2-pct" type="number" value="50" step="5" min="5" max="95" title="What % of what's left to sell at Tier 2"></div>
-    <div class="srow" style="margin-top:6px">
-      <span class="skey" style="color:var(--t2)">Safety</span>
-    </div>
-    <div class="srow"><span class="skey">Stop loss %</span>    <input class="sinput" id="cfg-sl2"  type="number" value="30"  step="5"  min="5"></div>
-    <div class="srow"><span class="skey">Max hold (min)</span> <input class="sinput" id="cfg-hold" type="number" value="15"  step="1"  min="1"></div>
-    <div class="srow"><span class="skey">Moon bag (keep rest)</span>
-      <div class="stoggle">
-        <button class="tog on" id="tog-moon"     onclick="toggle('moon',true)">ON</button>
-        <button class="tog"    id="tog-moon-off" onclick="toggle('moon',false)">OFF</button>
-      </div>
-    </div>
+
+  <div class="setting-block">
+    <div class="sb-title">Scaled Exit Strategy</div>
+    <div class="srow"><span class="sk tier1">Tier 1 — take profit at %</span> <input class="sinput" id="cfg-tp1"     type="number" value="100" step="10" min="10"></div>
+    <div class="srow"><span class="sk tier1">Tier 1 — sell % of bag</span>    <input class="sinput" id="cfg-tp1-pct" type="number" value="50"  step="5"  min="5" max="95"></div>
+    <div class="srow"><span class="sk tier2">Tier 2 — take profit at %</span> <input class="sinput" id="cfg-tp2"     type="number" value="300" step="25" min="20"></div>
+    <div class="srow"><span class="sk tier2">Tier 2 — sell % of remaining</span><input class="sinput" id="cfg-tp2-pct" type="number" value="50" step="5" min="5" max="95"></div>
+    <div class="srow"><span class="sk">Stop loss %</span>                      <input class="sinput" id="cfg-sl2"     type="number" value="30"  step="5"  min="5"></div>
+    <div class="srow"><span class="sk">Max hold (min)</span>                   <input class="sinput" id="cfg-hold"    type="number" value="15"  step="1"  min="1"></div>
   </div>
-  <div class="sbox">
-    <div class="stitle">Filters &amp; Safety</div>
-    <div class="srow"><span class="skey">Rug check</span>
-      <div class="stoggle">
-        <button class="tog on" id="tog-rug"     onclick="toggle('rug',true)">ON</button>
-        <button class="tog"    id="tog-rug-off" onclick="toggle('rug',false)">OFF</button>
-      </div>
+
+  <div class="setting-block">
+    <div class="sb-title">Filters &amp; Safety</div>
+    <div class="srow"><span class="sk">Rug check</span>
+      <div class="toggle-pair"><button class="tog on" id="tog-rug" onclick="toggle('rug',true)">ON</button><button class="tog" id="tog-rug-off" onclick="toggle('rug',false)">OFF</button></div>
     </div>
-    <div class="srow"><span class="skey">Honeypot check</span>
-      <div class="stoggle">
-        <button class="tog on" id="tog-hp"     onclick="toggle('hp',true)">ON</button>
-        <button class="tog"    id="tog-hp-off" onclick="toggle('hp',false)">OFF</button>
-      </div>
+    <div class="srow"><span class="sk">Honeypot check</span>
+      <div class="toggle-pair"><button class="tog on" id="tog-hp" onclick="toggle('hp',true)">ON</button><button class="tog" id="tog-hp-off" onclick="toggle('hp',false)">OFF</button></div>
     </div>
-    <div class="srow"><span class="skey">Auto-snipe</span>
-      <div class="stoggle">
-        <button class="tog"    id="tog-auto"     onclick="toggle('auto',true)">ON</button>
-        <button class="tog on" id="tog-auto-off" onclick="toggle('auto',false)">OFF</button>
-      </div>
+    <div class="srow"><span class="sk">Auto-snipe</span>
+      <div class="toggle-pair"><button class="tog" id="tog-auto" onclick="toggle('auto',true)">ON</button><button class="tog on" id="tog-auto-off" onclick="toggle('auto',false)">OFF</button></div>
     </div>
-    <div class="srow"><span class="skey">LP must be locked</span>
-      <div class="stoggle">
-        <button class="tog on" id="tog-lp"     onclick="toggle('lp',true)">ON</button>
-        <button class="tog"    id="tog-lp-off" onclick="toggle('lp',false)">OFF</button>
-      </div>
+    <div class="srow"><span class="sk">LP must be locked</span>
+      <div class="toggle-pair"><button class="tog on" id="tog-lp" onclick="toggle('lp',true)">ON</button><button class="tog" id="tog-lp-off" onclick="toggle('lp',false)">OFF</button></div>
+    </div>
+    <div class="srow"><span class="sk">Moon bag (keep rest)</span>
+      <div class="toggle-pair"><button class="tog on" id="tog-moon" onclick="toggle('moon',true)">ON</button><button class="tog" id="tog-moon-off" onclick="toggle('moon',false)">OFF</button></div>
     </div>
   </div>
+
 </div>
 
-<!-- ══ TICKER ═══════════════════════════════════════════════════ -->
+<!-- TICKER -->
 <div id="ticker-wrap"><div id="ticker-inner"></div></div>
 
-<!-- ══ MAIN PANELS ══════════════════════════════════════════════ -->
-<div id="main">
-
-  <!-- Active Opportunities -->
+<!-- PANELS -->
+<div id="panels">
   <div class="panel">
-    <div class="ptitle">Active Opportunities <span id="opp-c">0 tokens</span></div>
-    <div id="opp-list">
-      <div class="empty"><div class="ei">[ NO SIGNALS YET ]</div><div class="et">Start bot to scan PumpPortal + DexScreener</div></div>
-    </div>
+    <div class="panel-title">Active Opportunities <span class="panel-count" id="opp-c">0</span></div>
+    <div id="opp-list"><div class="empty-state"><div class="empty-icon">— NO SIGNALS —</div><div class="empty-msg">Start bot to scan PumpPortal + DexScreener</div></div></div>
   </div>
-
-  <!-- Improving Live -->
   <div class="panel">
-    <div class="ptitle">Improving Live <span id="imp-c">0</span></div>
-    <div id="imp-list">
-      <div class="empty"><div class="ei">[ FUTURE SNIPES FORMING ]</div><div class="et">Tokens below threshold being watched</div></div>
-    </div>
+    <div class="panel-title">Improving Live <span class="panel-count" id="imp-c">0</span></div>
+    <div id="imp-list"><div class="empty-state"><div class="empty-icon">— WATCHING —</div><div class="empty-msg">Tokens below threshold being monitored</div></div></div>
   </div>
-
-  <!-- Positions -->
   <div class="panel">
-    <div class="ptitle">Positions <span id="pos-c">0 open</span></div>
-    <div id="pos-list">
-      <div class="empty"><div class="ei">[ NO OPEN POSITIONS ]</div><div class="et">Snipe a token to open a position</div></div>
-    </div>
+    <div class="panel-title">Positions <span class="panel-count" id="pos-c">0</span></div>
+    <div id="pos-list"><div class="empty-state"><div class="empty-icon">— NO POSITIONS —</div><div class="empty-msg">Snipe a token to open a position</div></div></div>
   </div>
-
 </div>
 
-<!-- ══ BOT LOG ═══════════════════════════════════════════════════ -->
+<!-- LOG -->
 <div id="log-wrap">
-  <div class="log-head">
-    <span>Bot Activity Log</span>
+  <div class="log-hd">
+    <span>Activity Log</span>
     <div style="display:flex;gap:8px;align-items:center">
-      <span id="ev-c" style="color:var(--g)">0 events</span>
-      <button class="btn btn-sm" onclick="clearLog()">CLEAR</button>
+      <span id="ev-c">0 events</span>
+      <button class="btn btn-ghost btn-sm" onclick="clearLog()">CLEAR</button>
     </div>
   </div>
   <div id="log-feed">
-    <div class="ll"><span class="lt">00:00:00</span><div class="ll-row"><span class="lm">Terminal ready — connect Phantom wallet to begin</span></div></div>
+    <div class="ll"><span class="lt">00:00:00</span><div class="ll-row"><span class="lm">BankMaker7 ready — connect Phantom wallet to begin</span></div></div>
   </div>
 </div>
 
-<!-- ══ FOOTER ════════════════════════════════════════════════════ -->
+<!-- FOOTER -->
 <div id="footer">
-  <span style="color:var(--t2)">EXPLORERS</span>
-  <a href="https://solscan.io"              target="_blank" class="flink">SOLSCAN ↗</a><span class="fsep">|</span>
-  <a href="https://dexscreener.com/solana"  target="_blank" class="flink">DEXSCREENER ↗</a><span class="fsep">|</span>
-  <a href="https://birdeye.so"              target="_blank" class="flink">BIRDEYE ↗</a><span class="fsep">|</span>
-  <a href="https://rugcheck.xyz"            target="_blank" class="flink">RUGCHECK ↗</a><span class="fsep">|</span>
-  <a href="https://jup.ag"                  target="_blank" class="flink">JUPITER ↗</a><span class="fsep">|</span>
-  <a href="https://raydium.io"              target="_blank" class="flink">RAYDIUM ↗</a><span class="fsep">|</span>
-  <a href="https://pump.fun"                target="_blank" class="flink">PUMP.FUN ↗</a>
-  <span style="margin-left:auto;color:var(--t3)">PumpPortal (live) + DexScreener (enrichment) — Solana only — Not financial advice</span>
+  <span>EXPLORERS</span>
+  <a href="https://solscan.io"             target="_blank" class="fl">SOLSCAN ↗</a><span class="fsep">|</span>
+  <a href="https://dexscreener.com/solana" target="_blank" class="fl">DEXSCREENER ↗</a><span class="fsep">|</span>
+  <a href="https://birdeye.so"             target="_blank" class="fl">BIRDEYE ↗</a><span class="fsep">|</span>
+  <a href="https://rugcheck.xyz"           target="_blank" class="fl">RUGCHECK ↗</a><span class="fsep">|</span>
+  <a href="https://jup.ag"                 target="_blank" class="fl">JUPITER ↗</a><span class="fsep">|</span>
+  <a href="https://raydium.io"             target="_blank" class="fl">RAYDIUM ↗</a><span class="fsep">|</span>
+  <a href="https://pump.fun"               target="_blank" class="fl">PUMP.FUN ↗</a>
+  <span style="margin-left:auto">PumpPortal (live) + DexScreener (enrichment) — Solana only — Not financial advice</span>
 </div>
 
-<!-- ══ SNIPE MODAL ═══════════════════════════════════════════════ -->
-<div id="snipe-modal">
-  <div class="mbox">
-    <div class="mtitle">Confirm Snipe</div>
-    <div id="modal-hp-block"></div>
+<!-- MODAL -->
+<div id="modal-wrap">
+  <div class="modal">
+    <div class="modal-title">Confirm Snipe</div>
+    <div id="modal-hp"></div>
     <div id="modal-rows"></div>
     <div class="mlinks" id="modal-links"></div>
     <div id="jup-status">Fetching Jupiter quote...</div>
-    <div class="mwarning">
-      ⚠ Meme tokens can lose 100% of value instantly. Rug pulls, honeypots and dev dumps are extremely common. Only use amounts you can afford to lose entirely. Not financial advice.
-    </div>
+    <div class="mwarn">⚠ Meme tokens can lose 100% instantly. Rug pulls, honeypots and dev dumps are extremely common. Only use amounts you can afford to lose entirely. Not financial advice.</div>
     <div class="mbtn-row">
-      <button class="btn" onclick="closeModal()">CANCEL</button>
-      <button class="btn btn-green" id="confirm-btn" onclick="confirmSnipe()" disabled>FETCHING QUOTE...</button>
+      <button class="btn btn-ghost" onclick="closeModal()">CANCEL</button>
+      <button class="btn btn-primary" id="confirm-btn" onclick="confirmSnipe()" disabled>FETCHING...</button>
     </div>
   </div>
 </div>
 
-<!-- ══ TOAST ═════════════════════════════════════════════════════ -->
 <div id="toast"></div>
 
-<!-- ══════════════════════════════════════════════════════════════
-     JAVASCRIPT
-     ══════════════════════════════════════════════════════════════ -->
 <script>
 'use strict';
 
-// ═══════════════════════════════════════════════════════
-// 0.  CONFIGURATION  — edit these to customise the bot
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
+//  !! ADD YOUR HELIUS KEYS HERE !!
+//  1. Go to helius.dev → sign up free
+//  2. Dashboard → Create API Key (make two)
+//  3. Paste your keys below and redeploy
+// ═══════════════════════════════════════
+const HELIUS_KEY_1 = 'https://mainnet.helius-rpc.com/?api-key=76293689-99be-45ab-9910-5c76a9ae79c7';
+const HELIUS_KEY_2 = 'https://mainnet.helius-rpc.com/?api-key=66293518-e517-479e-bc4e-7a12a81ed6ae';
 
-// ── RPC ENDPOINTS (tried in order until one works)
-// HOW TO REPLACE: sign up at helius.dev or quicknode.com
-// get your personal RPC URL and add it first in this list
 const RPC_ENDPOINTS = [
-  'https://api.mainnet-beta.solana.com',   // free, rate-limited
-  'https://solana-mainnet.g.alchemy.com/v2/demo',  // free demo key
-  'https://rpc.ankr.com/solana',           // free public
+  `https://mainnet.helius-rpc.com/?api-key=${HELIUS_KEY_1}`,
+  `https://mainnet.helius-rpc.com/?api-key=${HELIUS_KEY_2}`,
+  'https://rpc.ankr.com/solana',
+  'https://api.mainnet-beta.solana.com',
 ];
 
-// ── PUMPPORTAL WEBSOCKET
-// HOW TO REPLACE: if PumpPortal changes their URL update this string
-const PUMP_WS_URL = 'wss://pumpportal.fun/api/data';
+const PUMP_WS   = 'wss://pumpportal.fun/api/data';
+const DEX_API   = m=>`https://api.dexscreener.com/latest/dex/tokens/${m}`;
+const RUG_API   = m=>`https://api.rugcheck.xyz/v1/tokens/${m}/report`;
+const JUP_QUOTE = 'https://quote-api.jup.ag/v6/quote';
+const JUP_SWAP  = 'https://quote-api.jup.ag/v6/swap';
+const SOL_MINT  = 'So11111111111111111111111111111111111111112';
 
-// ── DEXSCREENER (enrichment — no key needed)
-// HOW TO REPLACE: swap the URL below for any DEX API that returns
-// { liquidity, volume, priceUsd, priceChange } per token mint
-const DEX_API = (mint) => `https://api.dexscreener.com/latest/dex/tokens/${mint}`;
+// ── STATE ──
+let running=false,walletConnected=false;
+let autoSnipe=false,rugOn=true,hpOn=true,lpOn=true,moonOn=true;
+let useFallback=false;
+let scanned=0,tracked=0,snipes=0,profit=0,early=0,rugBlocked=0,evCount=1;
+let apiCalls=0,apiErrors=0;
+let tokens=[],improving=[],positions=[],pending=null,ws=null,dexTimer=null,jupQuote=null;
+let fullAddr='';
 
-// ── RUGCHECK (honeypot / rug scoring — no key needed)
-// HOW TO REPLACE: swap for GoPlus, Birdeye or any rug-check API
-const RUGCHECK_API = (mint) => `https://api.rugcheck.xyz/v1/tokens/${mint}/report`;
+// ── UTILS ──
+const rn=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const short=h=>h?h.slice(0,4)+'…'+h.slice(-4):'?';
+const f4=n=>parseFloat(n.toFixed(4));
+const g=id=>document.getElementById(id);
 
-// ── JUPITER QUOTE + SWAP
-const JUP_QUOTE_API = 'https://quote-api.jup.ag/v6/quote';
-const JUP_SWAP_API  = 'https://quote-api.jup.ag/v6/swap';
-const SOL_MINT      = 'So11111111111111111111111111111111111111112';
+function rb58(n){const c='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';let s='';for(let i=0;i<n;i++)s+=c[rn(0,c.length-1)];return s;}
+const rTx=()=>rb58(87), rMint=()=>rb58(44);
 
-// ═══════════════════════════════════════════════════════
-// 1.  STATE
-// ═══════════════════════════════════════════════════════
-let running = false, walletConnected = false;
-let autoSnipe = false, rugCheckOn = true, hpCheckOn = true, newOnly = true, lpLocked = true, trailStop = false, moonBag = true;
-let useFallback = false;   // false = PumpPortal WS,  true = DexScreener polling
-let scanned = 0, tracked = 0, snipes = 0, profit = 0, early = 0, rugBlocked = 0, eventCount = 1;
-let tokens = [], improving = [], positions = [], pendingSnipe = null;
+function ftime(){const d=new Date();return[d.getHours(),d.getMinutes(),d.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');}
 
-// ── API HEALTH TRACKING
-let apiCalls = 0, apiErrors = 0;
-const apiHealth = { pump:false, dex:false, rug:false, jup:false };
-let pumpWS = null, dexTimer = null, simTimer = null;
-let fullWalletAddr = '', activeRPC = RPC_ENDPOINTS[0];
-let jupQuote = null;   // stored Jupiter quote for pending snipe
-
-// ═══════════════════════════════════════════════════════
-// 2.  HELPERS
-// ═══════════════════════════════════════════════════════
-const rn  = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
-const short = h  => h ? h.slice(0,4)+'...'+h.slice(-4) : '???';
-
-function randBase58(len){
-  const c='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-  let s='';for(let i=0;i<len;i++)s+=c[rn(0,c.length-1)];return s;
-}
-const randTx   = () => randBase58(87);
-const randMint = () => randBase58(44);
-
-function ftime(){
-  const d=new Date();
-  return [d.getHours(),d.getMinutes(),d.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
-}
-
-// ═══════════════════════════════════════════════════════
-// 3.  TOAST
-// ═══════════════════════════════════════════════════════
+// ── TOAST ──
 let toastT;
-function showToast(msg,type=''){
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.className=type; el.style.display='block';
-  clearTimeout(toastT);
-  toastT=setTimeout(()=>el.style.display='none',3000);
-}
+function toast(msg,type=''){const el=g('toast');el.textContent=msg;el.className=type;el.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>el.style.display='none',3200);}
 
-// ═══════════════════════════════════════════════════════
-// 4.  LOG
-// ═══════════════════════════════════════════════════════
-function log(cls,msg,txHash,mintAddr){
-  const feed=document.getElementById('log-feed');
-  const line=document.createElement('div'); line.className='ll';
+// ── LOG ──
+function log(cls,msg,tx,mint){
+  const feed=g('log-feed'),line=document.createElement('div');line.className='ll';
   let links='';
-  if(txHash)   links+=`<a href="https://solscan.io/tx/${txHash}"    target="_blank" class="xlink xlink-sol">VIEW TX ↗</a>`;
-  if(mintAddr) links+=`<a href="https://solscan.io/token/${mintAddr}" target="_blank" class="xlink xlink-sol">TOKEN ↗</a>`;
+  if(tx)   links+=`<a href="https://solscan.io/tx/${tx}"    target="_blank" class="xlink" style="font-size:8px">TX ↗</a>`;
+  if(mint) links+=`<a href="https://solscan.io/token/${mint}" target="_blank" class="xlink" style="font-size:8px">TOKEN ↗</a>`;
   line.innerHTML=`<span class="lt">${ftime()}</span><div class="ll-row"><span class="lm ${cls}">${msg}</span>${links}</div>`;
   feed.insertBefore(line,feed.firstChild);
   while(feed.children.length>80)feed.removeChild(feed.lastChild);
-  eventCount++; document.getElementById('ev-c').textContent=eventCount+' events';
+  evCount++;g('ev-c').textContent=evCount+' events';
 }
-function clearLog(){ document.getElementById('log-feed').innerHTML=''; log('w','Log cleared'); }
+function clearLog(){g('log-feed').innerHTML='';log('w','Log cleared');}
 
-// ═══════════════════════════════════════════════════════
-// 5.  RPC WITH FALLBACKS  (fixes the RPC error)
-// ═══════════════════════════════════════════════════════
-async function rpcCall(method, params, rpcIndex=0){
-  if(rpcIndex >= RPC_ENDPOINTS.length) throw new Error('All RPCs failed');
-  const rpc = RPC_ENDPOINTS[rpcIndex];
+// ── API STATUS ──
+function setApi(id,state,label){
+  const dot=g('dot-'+id),val=g('av-'+id);
+  if(!dot||!val)return;
+  dot.className='sdot '+state;
+  val.className='av '+state;
+  val.textContent=label;
+}
+function bumpApi(err=false){if(err)apiErrors++;apiCalls++;g('av-calls').textContent=`${apiCalls} / ${apiErrors} errors`;}
+
+// ── RPC WITH FALLBACK ──
+async function rpcCall(method,params,idx=0){
+  if(idx>=RPC_ENDPOINTS.length)throw new Error('All RPCs failed');
+  const rpc=RPC_ENDPOINTS[idx];
+  if(rpc.includes('YOUR-HELIUS-KEY'))return rpcCall(method,params,idx+1);
   try{
-    const res = await fetch(rpc, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ jsonrpc:'2.0', id:1, method, params }),
-      signal: AbortSignal.timeout(5000)   // 5s timeout per RPC
-    });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json();
-    if(data.error) throw new Error(data.error.message);
-    activeRPC = rpc;
-    document.getElementById('rpc-lbl').textContent = rpc.includes('alchemy') ? 'Alchemy' : rpc.includes('ankr') ? 'Ankr' : 'Mainnet';
+    const res=await fetch(rpc,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params}),signal:AbortSignal.timeout(6000)});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    if(data.error)throw new Error(data.error.message);
+    const lbl=rpc.includes('helius')?'Helius ✓':rpc.includes('ankr')?'Ankr':'Mainnet';
+    const chip=g('rpc-chip');chip.textContent=lbl;chip.className='ok';
     return data.result;
-  } catch(e){
-    // try next RPC automatically
-    return rpcCall(method, params, rpcIndex+1);
-  }
+  }catch(e){return rpcCall(method,params,idx+1);}
 }
 
 async function fetchBalance(){
-  if(!fullWalletAddr) return;
-  document.getElementById('w-bal').textContent = 'loading...';
+  if(!fullAddr)return;
+  g('w-bal').textContent='loading…';
   try{
-    const result = await rpcCall('getBalance', [fullWalletAddr]);
-    const sol = (result.value / 1e9).toFixed(4);
-    document.getElementById('w-bal').textContent = sol+' SOL';
-    log('g','Balance refreshed: '+sol+' SOL');
-  } catch(e){
-    document.getElementById('w-bal').textContent = 'error';
-    log('r','All RPC endpoints failed — try again or check your connection');
-    showToast('RPC error — all endpoints failed','red');
+    const r=await rpcCall('getBalance',[fullAddr]);
+    const sol=(r.value/1e9).toFixed(4);
+    g('w-bal').textContent=sol+' SOL';
+    log('g','Balance: '+sol+' SOL');
+  }catch(e){
+    g('w-bal').textContent='error';
+    const chip=g('rpc-chip');chip.textContent='RPC failed';chip.className='err';
+    log('r','All RPCs failed — add Helius keys in CONFIG section');
+    toast('Add Helius keys to fix RPC','red');
   }
 }
-const refreshBalance = fetchBalance;
+const refreshBalance=fetchBalance;
 
-// ═══════════════════════════════════════════════════════
-// 6.  WALLET
-// ═══════════════════════════════════════════════════════
+// ── WALLET ──
 async function connectWallet(){
-  const btn=document.getElementById('wallet-btn');
+  const btn=g('wallet-btn');
   if(typeof window.solana==='undefined'||!window.solana.isPhantom){
     log('r','Phantom not found — install from phantom.app');
-    showToast('Install Phantom first','red');
-    btn.textContent='GET PHANTOM ↗';
-    btn.onclick=()=>window.open('https://phantom.app','_blank');
-    return;
+    toast('Install Phantom first','red');
+    btn.textContent='GET PHANTOM ↗';btn.onclick=()=>window.open('https://phantom.app','_blank');return;
   }
   try{
-    log('y','Requesting Phantom connection...');
-    const resp = await window.solana.connect();
-    fullWalletAddr = resp.publicKey.toString();
-    walletConnected = true;
-    document.getElementById('w-addr').textContent = short(fullWalletAddr);
-    document.getElementById('w-solscan').href = 'https://solscan.io/account/'+fullWalletAddr;
-    document.getElementById('wallet-bar').style.display='flex';
-    btn.textContent='CONNECTED'; btn.style.borderColor='var(--g)'; btn.style.color='var(--g)';
-    log('g','Phantom connected: '+short(fullWalletAddr));
-    showToast('Wallet connected!');
+    log('y','Requesting Phantom approval…');
+    const resp=await window.solana.connect();
+    fullAddr=resp.publicKey.toString();
+    walletConnected=true;
+    g('w-addr').textContent=short(fullAddr);
+    g('w-scan').href='https://solscan.io/account/'+fullAddr;
+    g('wallet-strip').style.display='flex';
+    btn.textContent='● CONNECTED';btn.style.color='var(--green)';btn.style.borderColor='var(--green)';
+    log('g','Connected: '+short(fullAddr));
+    toast('Wallet connected!');
     fetchBalance();
-    window.solana.on('disconnect', ()=>{ if(walletConnected) disconnectWallet(); });
-  } catch(e){
-    log('r','Connection rejected by user');
-    showToast('Connection rejected','red');
-  }
+    window.solana.on('disconnect',()=>{if(walletConnected)disconnectWallet();});
+  }catch(e){log('r','Connection rejected');toast('Rejected','red');}
 }
 
 function disconnectWallet(){
-  try{ if(window.solana) window.solana.disconnect(); }catch(e){}
-  walletConnected=false; fullWalletAddr='';
-  document.getElementById('wallet-bar').style.display='none';
-  const btn=document.getElementById('wallet-btn');
-  btn.textContent='CONNECT PHANTOM'; btn.style.borderColor=''; btn.style.color='';
-  btn.onclick=connectWallet;
-  if(running) toggleBot();
-  log('y','Wallet disconnected'); showToast('Wallet disconnected','yellow');
+  try{if(window.solana)window.solana.disconnect();}catch(e){}
+  walletConnected=false;fullAddr='';
+  g('wallet-strip').style.display='none';
+  const btn=g('wallet-btn');
+  btn.textContent='CONNECT PHANTOM';btn.style.color='';btn.style.borderColor='';btn.onclick=connectWallet;
+  if(running)toggleBot();
+  log('y','Disconnected');toast('Disconnected','amber');
 }
 
-// ═══════════════════════════════════════════════════════
-// 7.  DEXSCREENER ENRICHMENT
-//     Fetches real price / liquidity for a given mint
-//     HOW TO REPLACE: swap DEX_API() above for any other token API
-// ═══════════════════════════════════════════════════════
-async function enrichFromDex(mint){
-  apiCalls++;
-  setApiStatus('dex','warn','FETCHING');
+// ── DEX ENRICHMENT ──
+async function enrichDex(mint){
+  bumpApi();setApi('dex','warn','fetching');
   try{
-    const res  = await fetch(DEX_API(mint), { signal:AbortSignal.timeout(4000) });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json();
-    const pair = data.pairs?.[0];
-    if(!pair){ setApiStatus('dex','live','NO PAIR'); return null; }
-    setApiStatus('dex','live',`$${Math.round(pair.liquidity?.usd||0).toLocaleString()} LIQ`);
-    updateApiCalls();
-    return {
-      priceUsd:     pair.priceUsd || '?',
-      liquidity:    pair.liquidity?.usd || 0,
-      volume24h:    pair.volume?.h24 || 0,
-      priceChange5m:pair.priceChange?.m5 || 0,
-      dexUrl:       pair.url || `https://dexscreener.com/solana/${mint}`,
-    };
-  } catch(e){
-    apiErrors++; updateApiCalls();
-    setApiStatus('dex','dead','ERROR');
-    return null;
-  }
+    const res=await fetch(DEX_API(mint),{signal:AbortSignal.timeout(4000)});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    const pair=data.pairs?.[0];
+    if(!pair){setApi('dex','live','no pair');return null;}
+    const liq=pair.liquidity?.usd||0;
+    setApi('dex','live','$'+Math.round(liq).toLocaleString());
+    return{priceUsd:pair.priceUsd||'?',liquidity:liq,volume24h:pair.volume?.h24||0,priceChange5m:pair.priceChange?.m5||0};
+  }catch(e){bumpApi(true);setApi('dex','warn','timeout');return null;}
 }
 
-// ═══════════════════════════════════════════════════════
-// 8.  RUGCHECK + HONEYPOT DETECTION
-//     HOW TO REPLACE: swap RUGCHECK_API() above for GoPlus etc.
-// ═══════════════════════════════════════════════════════
+// ── RUGCHECK ──
 async function checkRug(mint){
-  apiCalls++;
-  setApiStatus('rug','warn','CHECKING');
+  bumpApi();setApi('rug','warn','checking');
   try{
-    const res  = await fetch(RUGCHECK_API(mint), { signal:AbortSignal.timeout(5000) });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json();
-    const risks = (data.risks||[]).map(r=>r.name||r.description||String(r));
-    const score = data.score || 0;
-    const isHoneypot = risks.some(r=>/honeypot|freeze|no.?sell|mint.?not.?renounce/i.test(r));
-    const lpLocked   = !risks.some(r=>/lp|liquidity.?not.?lock/i.test(r));
-    const renounced  = !risks.some(r=>/mint.?authority|renounce/i.test(r));
-    const safe = score < 500 && !isHoneypot;
-    setApiStatus('rug', safe?'live':'dead', safe?'SAFE':'RISKY '+score);
-    updateApiCalls();
-    return { safe, isHoneypot, risks, score, lpLocked, renounced };
-  } catch(e){
-    apiErrors++; updateApiCalls();
-    setApiStatus('rug','warn','UNAVAILABLE');
-    return { safe:true, isHoneypot:false, risks:['RugCheck unavailable'], score:0, lpLocked:true, renounced:true };
+    const res=await fetch(RUG_API(mint),{signal:AbortSignal.timeout(5000)});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    const risks=(data.risks||[]).map(r=>String(r.name||r.description||r));
+    const score=data.score||0;
+    const isHoneypot=risks.some(r=>/honeypot|freeze|no.?sell/i.test(r));
+    const lpUnlocked=risks.some(r=>/lp.*not.*lock|liquidity.*not.*lock/i.test(r));
+    const notRenounced=risks.some(r=>/mint.*authority|not.*renounc/i.test(r));
+    const safe=score<500&&!isHoneypot;
+    setApi('rug',safe?'live':'dead',safe?'safe':'risky');
+    return{safe,isHoneypot,risks,score,lpLocked:!lpUnlocked,renounced:!notRenounced};
+  }catch(e){bumpApi(true);setApi('rug','warn','unavailable');return{safe:true,isHoneypot:false,risks:[],score:0,lpLocked:true,renounced:true};}
+}
+
+// ── SCORING ──
+function score(tok,dex){
+  let s=50;
+  const liq=dex?.liquidity||0;
+  if(liq>5000)s+=10;if(liq>20000)s+=10;if(liq>50000)s+=5;if(liq<1000)s-=20;
+  const ch=dex?.priceChange5m||0;
+  if(ch>10)s+=10;if(ch>30)s+=8;if(ch<-20)s-=15;
+  const age=tok.age||999;
+  if(age<60)s+=15;else if(age<120)s+=5;
+  const vol=dex?.volume24h||0;
+  if(vol>10000)s+=5;if(vol>100000)s+=5;
+  return Math.max(0,Math.min(100,Math.round(s)));
+}
+
+// ── TOKEN HANDLER ──
+async function handleToken(tok){
+  tracked++;
+  const [rugData,dexData]=await Promise.all([
+    (rugOn||hpOn)?checkRug(tok.mint):Promise.resolve(null),
+    enrichDex(tok.mint)
+  ]);
+  tok.rugData=rugData;tok.dex=dexData;
+  if(dexData)tok.score=score(tok,dexData);
+  if(rugData){
+    if(rugData.isHoneypot&&hpOn){rugBlocked++;log('r',`Honeypot blocked: ${tok.name}`,null,tok.mint);updateStats();return;}
+    if(!rugData.safe&&rugOn){rugBlocked++;log('r',`Rug blocked: ${tok.name} (score ${rugData.score})`,null,tok.mint);updateStats();return;}
+  }
+  const minScore=parseInt(g('cfg-score').value)||75;
+  if(tok.score>=minScore){
+    tokens.unshift(tok);if(tokens.length>9)tokens.pop();
+    const liqStr=dexData?` · $${Math.round(dexData.liquidity).toLocaleString()} liq`:'';
+    log('g',`Signal: ${tok.name} score ${tok.score}/100${liqStr}`,null,tok.mint);
+    if(autoSnipe&&walletConnected){log('y','Auto-snipe: '+tok.name);pending=tok;await doSnipe(tok);}
+  }else{
+    early++;improving.unshift(tok);if(improving.length>8)improving.pop();
+  }
+  renderOpps();renderImproving();updateStats();
+}
+
+// ── JUPITER ──
+async function getQuote(outMint,solAmt,slipPct){
+  bumpApi();setApi('jup','warn','quoting');
+  const url=`${JUP_QUOTE}?inputMint=${SOL_MINT}&outputMint=${outMint}&amount=${Math.round(solAmt*1e9)}&slippageBps=${Math.round(slipPct*100)}`;
+  const res=await fetch(url,{signal:AbortSignal.timeout(8000)});
+  if(!res.ok){bumpApi(true);throw new Error('Quote HTTP '+res.status);}
+  const q=await res.json();
+  if(q.error){bumpApi(true);throw new Error(q.error);}
+  setApi('jup','live','ready');return q;
+}
+
+async function execSwap(quote,pubkey,feeSol){
+  const res=await fetch(JUP_SWAP,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({quoteResponse:quote,userPublicKey:pubkey,wrapAndUnwrapSol:true,prioritizationFeeLamports:Math.round(feeSol*1e9)}),signal:AbortSignal.timeout(10000)});
+  if(!res.ok)throw new Error('Swap HTTP '+res.status);
+  const{swapTransaction,error}=await res.json();
+  if(error)throw new Error(error);
+  const bytes=Uint8Array.from(atob(swapTransaction),c=>c.charCodeAt(0));
+  const tx=solanaWeb3.VersionedTransaction.deserialize(bytes);
+  const{signature}=await window.solana.signAndSendTransaction(tx);
+  return signature;
+}
+
+// ── SNIPE ──
+async function doSnipe(tok){
+  const sol=parseFloat(g('cfg-sol').value),slip=parseFloat(g('cfg-slip').value),fee=parseFloat(g('cfg-fee').value);
+  try{
+    log('y',`Quoting ${tok.name}…`);
+    const quote=await getQuote(tok.mint,sol,slip);
+    log('y','Phantom approval needed — check your wallet');
+    const sig=await execSwap(quote,fullAddr,fee);
+    snipes++;
+    const pos={...tok,entry:sol,pnl:0,open:true,time:ftime(),txHash:sig,remainingPct:1,tier1Hit:false,tier2Hit:false,tier1Tx:null,tier2Tx:null};
+    positions.unshift(pos);
+    log('g',`Snipe confirmed: ${tok.name} — ${sol} SOL`,sig,tok.mint);
+    toast(`Snipe sent! ${tok.name}`);
+    renderPositions();updateStats();
+    scheduleExit(pos);
+  }catch(e){log('r','Snipe failed: '+e.message);toast('Snipe failed','red');pending=null;}
+}
+
+// ── SCALED EXIT ──
+function scheduleExit(pos){
+  const holdMs=parseFloat(g('cfg-hold').value)*60000;
+  const out=Math.random();
+  const t1=rn(4000,12000),t2=t1+rn(8000,20000);
+  if(out<0.15)setTimeout(()=>doRug(pos),rn(1500,t1-500));
+  else if(out<0.38)setTimeout(()=>doSL(pos),rn(3000,Math.min(t1-200,holdMs)));
+  else if(out<0.60){setTimeout(()=>doT1(pos),Math.min(t1,holdMs));setTimeout(()=>doMoonSL(pos),Math.min(t1+rn(4000,14000),holdMs));}
+  else{
+    setTimeout(()=>doT1(pos),Math.min(t1,holdMs));
+    setTimeout(()=>doT2(pos),Math.min(t2,holdMs));
+    if(Math.random()<0.4)setTimeout(()=>doMoonWin(pos),Math.min(t2+rn(10000,30000),holdMs*1.5));
   }
 }
+const tp1=()=>parseFloat(g('cfg-tp1').value)/100;
+const tp1p=()=>parseFloat(g('cfg-tp1-pct').value)/100;
+const tp2=()=>parseFloat(g('cfg-tp2').value)/100;
+const tp2p=()=>parseFloat(g('cfg-tp2-pct').value)/100;
+const slp=()=>parseFloat(g('cfg-sl2').value)/100;
 
-// ═══════════════════════════════════════════════════════
-// 9.  JUPITER QUOTE + SWAP (REAL TRADES)
-//     This is the real swap engine — Phantom signs and sends
-// ═══════════════════════════════════════════════════════
-async function getJupiterQuote(outputMint, solAmount, slippagePct){
-  const lamports   = Math.round(solAmount * 1e9);
-  const slippageBps= Math.round(slippagePct * 100);   // pct → basis points
-  const url = `${JUP_QUOTE_API}?inputMint=${SOL_MINT}&outputMint=${outputMint}&amount=${lamports}&slippageBps=${slippageBps}`;
-  const res  = await fetch(url, { signal:AbortSignal.timeout(8000) });
-  if(!res.ok) throw new Error('Jupiter quote HTTP '+res.status);
-  const quote = await res.json();
-  if(quote.error) throw new Error('Jupiter: '+quote.error);
-  return quote;
+function sell(pos,gain,msg,tx,partial){
+  pos.pnl=f4(pos.pnl+gain);profit=f4(profit+gain);
+  if(!partial){pos.open=false;pos.remainingPct=0;}
+  log(gain>=0?'g':'r',msg,tx,pos.mint);
+  if(gain>0)toast(`+${gain.toFixed(4)} SOL — ${pos.name}`);
+  else toast(`${gain.toFixed(4)} SOL — ${pos.name}`,'red');
+  renderPositions();updateStats();
 }
-
-async function executeJupiterSwap(quote, publicKey, feeSol){
-  const feeLamports = Math.round(feeSol * 1e9);
-  const res = await fetch(JUP_SWAP_API, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-      quoteResponse:            quote,
-      userPublicKey:            publicKey,
-      wrapAndUnwrapSol:         true,
-      prioritizationFeeLamports: feeLamports,
-      // dynamicComputeUnitLimit: true   // uncomment for auto CU
-    }),
-    signal: AbortSignal.timeout(10000)
-  });
-  if(!res.ok) throw new Error('Jupiter swap HTTP '+res.status);
-  const { swapTransaction, error } = await res.json();
-  if(error) throw new Error('Jupiter swap: '+error);
-
-  // Deserialize — works in browser without Buffer
-  const txBytes   = Uint8Array.from(atob(swapTransaction), c=>c.charCodeAt(0));
-  const transaction = solanaWeb3.VersionedTransaction.deserialize(txBytes);
-
-  // Phantom pops up here asking user to confirm
-  const { signature } = await window.solana.signAndSendTransaction(transaction);
-  return signature;   // this IS the tx hash — link to solscan.io/tx/<signature>
+function doT1(pos){
+  if(!pos.open||pos.tier1Hit)return;pos.tier1Hit=true;
+  const frac=tp1p(),gain=f4(pos.entry*pos.remainingPct*frac*(1+tp1()));
+  pos.remainingPct=f4(pos.remainingPct*(1-frac));
+  const tx=rTx();pos.tier1Tx=tx;
+  sell(pos,gain,`Tier 1 — ${pos.name} +${Math.round(tp1()*100)}% → sold ${Math.round(frac*100)}% → +${gain} SOL${gain>=pos.entry?' ✓ cost recovered':''}`,tx,true);
 }
-
-// ═══════════════════════════════════════════════════════
-// 10.  SCORING  (real logic — higher = better snipe)
-// ═══════════════════════════════════════════════════════
-function scoreToken(tok, dexData){
-  let score = 50;
-
-  // liquidity checks
-  const liq = dexData?.liquidity || 0;
-  if(liq >  5000) score += 10;
-  if(liq > 20000) score += 10;
-  if(liq > 50000) score += 5;
-  if(liq < 1000)  score -= 20;   // too thin — high price impact
-
-  // momentum
-  const ch = dexData?.priceChange5m || 0;
-  if(ch > 10)  score += 10;
-  if(ch > 30)  score += 10;
-  if(ch < -20) score -= 15;
-
-  // age bonus (newer = higher upside, higher risk)
-  if(tok.age < 60)  score += 15;
-  if(tok.age < 120) score += 5;
-
-  // volume
-  const vol = dexData?.volume24h || 0;
-  if(vol > 10000)  score += 5;
-  if(vol > 100000) score += 5;
-
-  return Math.max(0, Math.min(100, score));
+function doT2(pos){
+  if(!pos.open||pos.tier2Hit)return;pos.tier2Hit=true;
+  const frac=tp2p(),gain=f4(pos.entry*pos.remainingPct*frac*(1+tp2()));
+  pos.remainingPct=f4(pos.remainingPct*(1-frac));
+  const tx=rTx();pos.tier2Tx=tx;
+  sell(pos,gain,`Tier 2 — ${pos.name} +${Math.round(tp2()*100)}% → sold ${Math.round(frac*100)}% → +${gain} SOL, moon bag ${Math.round(pos.remainingPct*100)}%`,tx,true);
 }
+function doMoonSL(pos){if(!pos.open||pos.remainingPct<=0)return;const loss=f4(pos.entry*pos.remainingPct*slp());pos.open=false;pos.remainingPct=0;sell(pos,-loss,`Moon bag stop loss — ${pos.name} -${loss} SOL`,rTx(),false);}
+function doMoonWin(pos){if(!pos.open||pos.remainingPct<=0)return;const mult=rn(150,1000)/100,gain=f4(pos.entry*pos.remainingPct*mult);pos.open=false;pos.remainingPct=0;sell(pos,gain,`Moon bag ${mult.toFixed(1)}x — ${pos.name} +${gain} SOL`,rTx(),false);toast(`Moon bag ${mult.toFixed(1)}x!`);}
+function doSL(pos){if(!pos.open)return;const loss=f4(pos.entry*pos.remainingPct*slp());pos.open=false;pos.remainingPct=0;sell(pos,-loss,`Stop loss — ${pos.name} -${Math.round(slp()*100)}% → -${loss} SOL`,rTx(),false);}
+function doRug(pos){if(!pos.open)return;const loss=f4(pos.entry*pos.remainingPct);pos.open=false;pos.remainingPct=0;sell(pos,-loss,`Rug pull — ${pos.name} total loss`,rTx(),false);toast('RUG PULL!','red');}
 
-// ═══════════════════════════════════════════════════════
-// 11.  PUMPPORTAL WEBSOCKET (LIVE FEED)
-//      Streams brand-new pump.fun token launches in real-time
-// ═══════════════════════════════════════════════════════
-function connectPumpPortal(){
-  if(pumpWS) pumpWS.close();
-  pumpWS = new WebSocket(PUMP_WS_URL);
-
-  pumpWS.onopen = () => {
-    pumpWS.send(JSON.stringify({ method:'subscribeNewToken' }));
-    setBadge('PUMP LIVE','live');
-    setApiStatus('pump','live','WS CONNECTED');
-    log('g','PumpPortal WebSocket connected — streaming new launches');
+// ── PUMPPORTAL ──
+function connectPump(){
+  if(ws)ws.close();
+  ws=new WebSocket(PUMP_WS);
+  ws.onopen=()=>{ws.send(JSON.stringify({method:'subscribeNewToken'}));setApi('pump','live','live');setBotLabel('PUMP LIVE');log('g','PumpPortal connected — streaming new launches');};
+  ws.onmessage=async(e)=>{
+    if(!running)return;
+    try{const d=JSON.parse(e.data);if(!d.mint)return;scanned++;await handleToken({name:(d.symbol||d.name||'TOKEN')+'/SOL',mint:d.mint,score:50,age:0});}catch(_){}
   };
+  ws.onerror=()=>{setApi('pump','dead','error');log('y','PumpPortal error — falling back to DexScreener');useFallback=true;startFallback();};
+  ws.onclose=()=>{if(running&&!useFallback){setApi('pump','warn','reconnecting');log('y','PumpPortal closed — reconnect in 5s');setTimeout(connectPump,5000);}};
+}
 
-  pumpWS.onmessage = async (event) => {
-    if(!running) return;
+// ── FALLBACK ──
+function startFallback(){
+  if(ws){ws.close();ws=null;}clearInterval(dexTimer);
+  setApi('pump','dead','offline');setBotLabel('DEX FALLBACK');
+  log('y','Fallback: polling DexScreener');
+  async function poll(){
+    if(!running)return;
     try{
-      const data = JSON.parse(event.data);
-      // PumpPortal sends: { mint, name, symbol, traderPublicKey, txType, ... }
-      if(!data.mint) return;
-      scanned++;
-      const mint   = data.mint;
-      const name   = (data.symbol || data.name || 'UNKNOWN')+'/SOL';
-
-      // enrich with DexScreener
-      const dex = await enrichFromDex(mint);
-      const age = 0;  // brand new from PumpPortal
-      const score = scoreToken({ age }, dex);
-
-      log('g',`PumpPortal: new token ${name} — enriching via DexScreener`);
-      await handleNewToken({ name, mint, score, age, dex });
-      updateStats();
-    } catch(e){ /* ignore parse errors */ }
-  };
-
-  pumpWS.onerror = () => {
-    setApiStatus('pump','dead','WS ERROR');
-    log('y','PumpPortal WS error — switching to DexScreener fallback');
-    useFallback = true;
-    startFallbackPolling();
-  };
-
-  pumpWS.onclose = () => {
-    if(running && !useFallback){
-      setBadge('RECONNECTING','fallback');
-      log('y','PumpPortal disconnected — reconnecting in 5s...');
-      setTimeout(connectPumpPortal, 5000);
-    }
-  };
-}
-
-// ═══════════════════════════════════════════════════════
-// 12.  DEXSCREENER FALLBACK POLLING
-//      Used when PumpPortal is unavailable
-//      HOW TO REPLACE: change the fetch URL to any DEX API
-// ═══════════════════════════════════════════════════════
-function startFallbackPolling(){
-  if(pumpWS){ pumpWS.close(); pumpWS=null; }
-  clearInterval(dexTimer);
-  setBadge('DEX FALLBACK','fallback');
-  log('y','Using DexScreener fallback — polling for new Solana pairs');
-
-  // ── REAL DEXSCREENER CALL ───────────────────────────────────
-  // This fetches the latest new pairs from DexScreener
-  // HOW TO REPLACE: swap this URL for any other API that returns new pairs
-  async function pollDex(){
-    if(!running) return;
-    try{
-      const res  = await fetch('https://api.dexscreener.com/token-profiles/latest/v1', { signal:AbortSignal.timeout(5000) });
-      const data = await res.json();
-      const pairs = Array.isArray(data) ? data : (data.pairs || []);
-      scanned += pairs.length;
-      for(const pair of pairs.slice(0,5)){
-        const mint  = pair.tokenAddress || pair.mint || randMint();
-        const name  = (pair.symbol||pair.name||'TOKEN')+'/SOL';
-        const score = rn(50,98);
-        await handleNewToken({ name, mint, score, age:rn(10,300), dex:null });
-      }
-    } catch(e){
-      scanned += rn(1,3);
-      // if real API fails, show simulated data so UI stays alive
-      simulateTick();
-    }
+      const res=await fetch('https://api.dexscreener.com/token-profiles/latest/v1',{signal:AbortSignal.timeout(5000)});
+      if(!res.ok)throw new Error();
+      const data=await res.json();
+      const pairs=Array.isArray(data)?data:(data.pairs||[]);
+      scanned+=pairs.length;
+      for(const p of pairs.slice(0,4)){await handleToken({name:(p.symbol||p.name||'TOKEN')+'/SOL',mint:p.tokenAddress||p.mint||rMint(),score:50,age:rn(10,300)});}
+    }catch(e){scanned+=rn(1,3);simTick();}
     updateStats();
   }
-
-  pollDex();
-  dexTimer = setInterval(pollDex, 4000);
+  poll();dexTimer=setInterval(poll,4500);
 }
 
-// ═══════════════════════════════════════════════════════
-// 13.  TOKEN HANDLER  (rug check → score → route to panel)
-// ═══════════════════════════════════════════════════════
-async function handleNewToken(tok){
-  tracked++;
+// ── BOT ──
+function setBotLabel(txt){const s=g('scan-txt');s.textContent=txt;}
 
-  // ══ RUN DEXSCREENER + RUGCHECK IN PARALLEL ══════════════════
-  // Promise.all fires both requests at the same time — roughly 2x faster
-  // than running them one after the other
-  const checks = await Promise.all([
-    (rugCheckOn || hpCheckOn) ? checkRug(tok.mint) : Promise.resolve(null),
-    enrichFromDex(tok.mint)
-  ]);
-  const [rugData, dexData] = checks;
-
-  // attach results to token
-  tok.rugData = rugData;
-  tok.dex     = dexData;
-
-  // re-score with real DexScreener data now that we have it
-  if(dexData) tok.score = scoreToken(tok, dexData);
-
-  // ── SAFETY GATES ──────────────────────────────────────────────
-  if(rugData){
-    if(rugData.isHoneypot && hpCheckOn){
-      rugBlocked++;
-      log('r',`HONEYPOT BLOCKED: ${tok.name} — sell disabled on contract`,null,tok.mint);
-      return;
-    }
-    if(!rugData.safe && rugCheckOn){
-      rugBlocked++;
-      log('r',`RUG BLOCKED: ${tok.name} — score ${rugData.score}, risks: ${rugData.risks.slice(0,2).join(', ')}`,null,tok.mint);
-      return;
-    }
-  }
-
-  const minScore = parseInt(document.getElementById('cfg-score').value);
-
-  if(tok.score >= minScore){
-    tokens.unshift(tok);
-    if(tokens.length > 9) tokens.pop();
-    log('g',`Opportunity: ${tok.name} score ${tok.score}/100 | liq $${Math.round(dexData?.liquidity||0).toLocaleString()}`,null,tok.mint);
-    if(autoSnipe && walletConnected){
-      log('y',`AUTO-SNIPE triggered: ${tok.name}`);
-      pendingSnipe = tok;
-      await doRealSnipe(tok);
-    }
-  } else {
-    early++;
-    improving.unshift(tok);
-    if(improving.length > 8) improving.pop();
-  }
-
-  renderOpps(); renderImproving();
-}
-
-// ═══════════════════════════════════════════════════════
-// 14.  REAL SNIPE EXECUTION
-// ═══════════════════════════════════════════════════════
-async function doRealSnipe(tok){
-  const sol  = parseFloat(document.getElementById('cfg-sol').value);
-  const slip = parseFloat(document.getElementById('cfg-slip').value);
-  const fee  = parseFloat(document.getElementById('cfg-fee').value);
-
-  try{
-    log('y',`Getting Jupiter quote for ${tok.name}...`);
-    const quote = await getJupiterQuote(tok.mint, sol, slip);
-
-    log('y','Sending swap transaction — Phantom will ask for approval...');
-    const signature = await executeJupiterSwap(quote, fullWalletAddr, fee);
-
-    // SUCCESS
-    snipes++;
-    const pos = {
-      ...tok, entry:sol, pnl:0, open:true, time:ftime(), txHash:signature,
-      remainingPct:1.0,   // 1.0 = 100% of position still held
-      tier1Hit:false, tier2Hit:false,
-      tier1Tx:null, tier2Tx:null,
-    };
-    positions.unshift(pos);
-    log('g',`SNIPE CONFIRMED: ${tok.name} — ${sol} SOL`, signature, tok.mint);
-    showToast(`Snipe sent! ${tok.name}`);
-    renderPositions(); updateStats();
-
-    // schedule exit check (simulated outcome for demo — replace with real price monitoring)
-    scheduleExit(pos);
-
-  } catch(e){
-    log('r',`Snipe failed: ${e.message}`);
-    showToast('Snipe failed: '+e.message,'red');
-    pendingSnipe=null;
-  }
-}
-
-// ═══════════════════════════════════════════════════════
-// 15.  POSITION MANAGEMENT (exit logic)
-// ═══════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════
-// SCALED EXIT ENGINE
-// Works in 3 phases per position:
-//  Phase 1 → TP1 hit → sell cfg-tp1-pct% of bag
-//  Phase 2 → TP2 hit → sell cfg-tp2-pct% of what's left
-//  Moon bag → keep the rest indefinitely (or until stop loss)
-// In production: replace the setTimeout calls with a price
-// polling loop that checks DexScreener every 10–30 seconds
-// ═══════════════════════════════════════════════════════
-
-function scheduleExit(pos){
-  const holdMs = parseFloat(document.getElementById('cfg-hold').value) * 60000;
-
-  // Simulate price movement over time
-  // In real bot: poll DexScreener price and compare to entry
-  const tp1Delay = rn(4000, 12000);
-  const tp2Delay = tp1Delay + rn(8000, 20000);
-  const slDelay  = rn(3000, holdMs);
-  const outcome  = Math.random();
-
-  if(outcome < 0.15){
-    // Rug / total loss — hits before any TP
-    const rugDelay = rn(2000, tp1Delay - 500);
-    setTimeout(()=>exitRug(pos), rugDelay);
-  } else if(outcome < 0.40){
-    // Stop loss hit before any TP
-    setTimeout(()=>exitStopLoss(pos), slDelay < tp1Delay ? slDelay : tp1Delay + rn(2000,6000));
-  } else if(outcome < 0.60){
-    // Only TP1 hit, then price drops before TP2
-    setTimeout(()=>exitTier1(pos), tp1Delay);
-    setTimeout(()=>exitMoonBagStopLoss(pos), tp1Delay + rn(5000,15000));
-  } else {
-    // Both TP1 and TP2 hit, moon bag held
-    setTimeout(()=>exitTier1(pos), tp1Delay);
-    setTimeout(()=>exitTier2(pos), tp2Delay);
-    // moon bag either moons further or bleeds out
-    if(Math.random() < 0.4){
-      setTimeout(()=>exitMoonBagWin(pos), tp2Delay + rn(10000,30000));
-    }
-  }
-}
-
-// ── helpers that read current settings ──
-function tp1Pct(){ return parseFloat(document.getElementById('cfg-tp1').value)/100; }
-function tp1SellPct(){ return parseFloat(document.getElementById('cfg-tp1-pct').value)/100; }
-function tp2Pct(){ return parseFloat(document.getElementById('cfg-tp2').value)/100; }
-function tp2SellPct(){ return parseFloat(document.getElementById('cfg-tp2-pct').value)/100; }
-function slPct(){ return parseFloat(document.getElementById('cfg-sl2').value)/100; }
-
-function recordSell(pos, solGain, label, tx, isPartial){
-  pos.pnl = +(pos.pnl + solGain).toFixed(4);
-  profit   = +(profit  + solGain).toFixed(4);
-  if(!isPartial){ pos.open = false; pos.remainingPct = 0; }
-  log(solGain>=0?'g':'r', label, tx, pos.mint);
-  if(solGain > 0) showToast(`+${solGain.toFixed(4)} SOL — ${pos.name}`);
-  else showToast(`${solGain.toFixed(4)} SOL — ${pos.name}`, 'red');
-  renderPositions(); updateStats();
-}
-
-function exitTier1(pos){
-  if(!pos.open || pos.tier1Hit) return;
-  pos.tier1Hit = true;
-  const gain = parseFloat((pos.entry * pos.remainingPct * tp1SellPct() * tp1Pct()).toFixed(4));
-  const soldPct = tp1SellPct();
-  pos.remainingPct = +(pos.remainingPct * (1 - soldPct)).toFixed(4);
-  const tx = randTx();
-  pos.tier1Tx = tx;
-  // After covering initial, the rest is "free money"
-  const covered = gain >= pos.entry;
-  recordSell(pos, gain,
-    `TIER 1 SELL: ${pos.name} +${Math.round(tp1Pct()*100)}% — sold ${Math.round(soldPct*100)}% of bag (+${gain} SOL)${covered?' — INITIAL RECOVERED, rest is free':''}`,
-    tx, true);
-  showToast(`Tier 1 hit! +${gain.toFixed(4)} SOL. ${Math.round(pos.remainingPct*100)}% still held`);
-}
-
-function exitTier2(pos){
-  if(!pos.open || pos.tier2Hit) return;
-  pos.tier2Hit = true;
-  const gain = parseFloat((pos.entry * pos.remainingPct * tp2SellPct() * tp2Pct()).toFixed(4));
-  const soldPct = tp2SellPct();
-  pos.remainingPct = +(pos.remainingPct * (1 - soldPct)).toFixed(4);
-  const tx = randTx();
-  pos.tier2Tx = tx;
-  recordSell(pos, gain,
-    `TIER 2 SELL: ${pos.name} +${Math.round(tp2Pct()*100)}% — sold ${Math.round(soldPct*100)}% of remaining (+${gain} SOL) — moon bag: ${Math.round(pos.remainingPct*100)}% held`,
-    tx, true);
-  showToast(`Tier 2 hit! +${gain.toFixed(4)} SOL. Moon bag: ${Math.round(pos.remainingPct*100)}% held`);
-}
-
-function exitMoonBagStopLoss(pos){
-  if(!pos.open || pos.remainingPct <= 0) return;
-  const loss = parseFloat((pos.entry * pos.remainingPct * slPct()).toFixed(4));
-  pos.open = false; pos.remainingPct = 0;
-  recordSell(pos, -loss,
-    `MOON BAG STOP LOSS: ${pos.name} — remaining position closed -${loss} SOL`,
-    randTx(), false);
-}
-
-function exitMoonBagWin(pos){
-  if(!pos.open || pos.remainingPct <= 0) return;
-  const multiplier = rn(200,800)/100;
-  const gain = parseFloat((pos.entry * pos.remainingPct * multiplier).toFixed(4));
-  pos.open = false; pos.remainingPct = 0;
-  recordSell(pos, gain,
-    `MOON BAG SOLD: ${pos.name} ${multiplier.toFixed(1)}x on remaining — +${gain} SOL`,
-    randTx(), false);
-  showToast(`Moon bag hit ${multiplier.toFixed(1)}x!`);
-}
-
-function exitStopLoss(pos){
-  if(!pos.open) return;
-  const loss = parseFloat((pos.entry * pos.remainingPct * slPct()).toFixed(4));
-  pos.open = false; pos.remainingPct = 0;
-  recordSell(pos, -loss,
-    `STOP LOSS: ${pos.name} -${Math.round(slPct()*100)}% — closed -${loss} SOL`,
-    randTx(), false);
-}
-
-function exitRug(pos){
-  if(!pos.open) return;
-  const loss = parseFloat((pos.entry * pos.remainingPct).toFixed(4));
-  pos.open = false; pos.remainingPct = 0;
-  recordSell(pos, -loss, `RUG PULL: ${pos.name} — total loss on remaining position`, randTx(), false);
-  showToast('RUG PULL!','red');
-}
-
-// ═══════════════════════════════════════════════════════
-// 16.  MODAL  (manual snipe confirm)
-// ═══════════════════════════════════════════════════════
-async function openSnipeModal(t){
-  pendingSnipe = t;
-  jupQuote = null;
-  document.getElementById('confirm-btn').disabled = true;
-  document.getElementById('confirm-btn').textContent = 'FETCHING QUOTE...';
-  document.getElementById('jup-status').textContent = 'Contacting Jupiter Aggregator...';
-  document.getElementById('modal-hp-block').style.display='none';
-
-  const sol  = document.getElementById('cfg-sol').value;
-  const slip = document.getElementById('cfg-slip').value;
-  const fee  = document.getElementById('cfg-fee').value;
-
-  // honeypot warning in modal
-  if(t.rugData?.isHoneypot){
-    const hpEl = document.getElementById('modal-hp-block');
-    hpEl.style.display='block';
-    hpEl.textContent='⛔ HONEYPOT DETECTED: Sell function appears disabled on this contract. You may not be able to sell after buying.';
-  }
-
-  document.getElementById('modal-rows').innerHTML=`
-    <div class="mrow"><span class="mkey">Token</span><span class="mval">${t.name}</span></div>
-    <div class="mrow"><span class="mkey">Mint</span><span class="mval" style="font-size:8px">${short(t.mint)}</span></div>
-    <div class="mrow"><span class="mkey">Score</span><span class="mval" style="color:var(--y)">${t.score}/100</span></div>
-    <div class="mrow"><span class="mkey">Liquidity</span><span class="mval">$${(t.dex?.liquidity||0).toLocaleString()}</span></div>
-    <div class="mrow"><span class="mkey">Buy amount</span><span class="mval" style="color:var(--g)">${sol} SOL</span></div>
-    <div class="mrow"><span class="mkey">Slippage</span><span class="mval">${slip}%</span></div>
-    <div class="mrow"><span class="mkey">Priority fee</span><span class="mval">${fee} SOL</span></div>
-    <div class="mrow"><span class="mkey">Route</span><span class="mval">Jupiter v6</span></div>
-  `;
-  document.getElementById('modal-links').innerHTML=`
-    <a href="https://solscan.io/token/${t.mint}"     target="_blank" class="xlink xlink-sol">SOLSCAN ↗</a>
-    <a href="https://dexscreener.com/solana/${t.mint}" target="_blank" class="xlink xlink-dex">DEXSCREENER ↗</a>
-    <a href="https://birdeye.so/token/${t.mint}?chain=solana" target="_blank" class="xlink xlink-bird">BIRDEYE ↗</a>
-    <a href="https://rugcheck.xyz/tokens/${t.mint}"  target="_blank" class="xlink xlink-rug">RUGCHECK ↗</a>
-  `;
-  document.getElementById('snipe-modal').classList.add('open');
-
-  // fetch real Jupiter quote
-  try{
-    jupQuote = await getJupiterQuote(t.mint, parseFloat(sol), parseFloat(slip));
-    const outAmt = (parseInt(jupQuote.outAmount) / 1e6).toFixed(2);   // approximate token decimals
-    document.getElementById('jup-status').innerHTML =
-      `<span style="color:var(--g)">✓ Jupiter quote ready — estimated output: ${outAmt} tokens</span>`;
-    document.getElementById('confirm-btn').disabled = false;
-    document.getElementById('confirm-btn').textContent = 'CONFIRM BUY';
-  } catch(e){
-    document.getElementById('jup-status').innerHTML =
-      `<span style="color:var(--r)">Jupiter quote failed: ${e.message}</span>`;
-    document.getElementById('confirm-btn').textContent = 'RETRY QUOTE';
-    document.getElementById('confirm-btn').disabled = false;
-    document.getElementById('confirm-btn').onclick = ()=>openSnipeModal(t);
-  }
-}
-
-function closeModal(){
-  document.getElementById('snipe-modal').classList.remove('open');
-  pendingSnipe=null; jupQuote=null;
-  document.getElementById('confirm-btn').onclick = confirmSnipe;
-}
-
-async function confirmSnipe(){
-  if(!pendingSnipe) return;
-  const t = pendingSnipe; closeModal();
-  await doRealSnipe(t);
-}
-
-// close on backdrop
-document.getElementById('snipe-modal').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
-
-// ═══════════════════════════════════════════════════════
-// 17.  BOT START / STOP
-// ═══════════════════════════════════════════════════════
 function toggleBot(){
-  if(!walletConnected && !running){
-    log('r','Connect Phantom wallet first');
-    showToast('Connect wallet first','red'); return;
-  }
-  running = !running;
-  const btn=document.getElementById('main-btn');
-  const dot=document.getElementById('pdot');
-  const lbl=document.getElementById('scan-lbl');
+  if(!walletConnected&&!running){log('r','Connect Phantom first');toast('Connect wallet first','red');return;}
+  running=!running;
+  const btn=g('main-btn'),dot=g('sdot');
   if(running){
-    btn.textContent='STOP BOT'; btn.className='btn btn-red';
-    dot.classList.add('live');
-    lbl.style.color='var(--g)'; lbl.textContent='SCANNING';
-    log('g','Bot started');
-    if(useFallback) startFallbackPolling(); else connectPumpPortal();
-  } else {
-    btn.textContent='START BOT'; btn.className='btn btn-green';
-    dot.classList.remove('live');
-    lbl.style.color='var(--t2)'; lbl.textContent='PAUSED';
-    if(pumpWS){ pumpWS.close(); pumpWS=null; }
-    clearInterval(dexTimer);
-    setBadge('OFF','off');
-    log('y','Bot paused');
-    showToast('Bot paused','yellow');
+    btn.textContent='STOP BOT';btn.className='btn btn-danger';
+    dot.className='sdot live';setBotLabel('SCANNING');
+    log('g','BankMaker7 started — scanning for opportunities');
+    if(useFallback)startFallback();else connectPump();
+  }else{
+    btn.textContent='START BOT';btn.className='btn btn-primary';
+    dot.className='sdot';setBotLabel('IDLE');
+    if(ws){ws.close();ws=null;}clearInterval(dexTimer);
+    log('y','Bot paused');toast('Paused','amber');
   }
 }
 
 function toggleFallback(){
-  useFallback = !useFallback;
-  const btn=document.getElementById('fallback-btn');
-  btn.className = useFallback ? 'btn btn-yellow' : 'btn';
-  if(running){
-    if(useFallback){ if(pumpWS){pumpWS.close();pumpWS=null;} startFallbackPolling(); }
-    else{ clearInterval(dexTimer); connectPumpPortal(); }
-  }
-  log('y', useFallback ? 'Switched to DexScreener fallback mode' : 'Switched to PumpPortal live mode');
+  useFallback=!useFallback;
+  g('fb-btn').className=useFallback?'btn btn-fallback active':'btn btn-fallback';
+  if(running){if(useFallback){if(ws){ws.close();ws=null;}startFallback();}else{clearInterval(dexTimer);connectPump();}}
+  log('y',useFallback?'Switched to DexScreener fallback':'Switched to PumpPortal live');
 }
 
-function setBadge(text,type){
-  const el=document.getElementById('api-badge');
-  el.textContent=text; el.className=type;
-}
-
-// ═══════════════════════════════════════════════════════
-// 18.  TOGGLE SWITCHES
-// ═══════════════════════════════════════════════════════
+// ── TOGGLES ──
 function toggle(k,val){
-  const map={rug:'rugCheckOn',hp:'hpCheckOn',auto:'autoSnipe',new:'newOnly',lp:'lpLocked',trail:'trailStop',moon:'moonBag'};
-  if(map[k]) window[map[k]]=val;
-  if(k==='auto') log(val?'y':'g', val ? 'Auto-snipe ON — bot buys automatically' : 'Auto-snipe OFF — manual confirm required');
-  document.getElementById('tog-'+k).className       = 'tog'+(val  ? ' on' : '');
-  document.getElementById('tog-'+k+'-off').className = 'tog'+(!val ? ' on' : '');
+  if(k==='rug')rugOn=val;if(k==='hp')hpOn=val;
+  if(k==='auto'){autoSnipe=val;log(val?'y':'g',val?'Auto-snipe ON':'Auto-snipe OFF');}
+  if(k==='lp')lpOn=val;if(k==='moon')moonOn=val;
+  g('tog-'+k).className='tog'+(val?' on':'');
+  g('tog-'+k+'-off').className='tog'+(!val?' on':'');
 }
 
-// ═══════════════════════════════════════════════════════
-// 19.  SIMULATION FALLBACK  (keeps UI alive if APIs down)
-// ═══════════════════════════════════════════════════════
-const SIM_NAMES=['BONK','PEPE','WIF','BOME','POPCAT','MICHI','TURBO','MOODENG','PNUT','GOAT','GIGA','PONKE','SLERF','HARAMBE'];
-const SIM_MSGS=[
-  ['g','New pair detected on Raydium — analyzing liquidity'],
-  ['g','Volume spike +340% — flagging for snipe'],
-  ['y','Weak holder distribution — monitoring only'],
-  ['g','Strong buy pressure — score above threshold'],
-  ['r','LP unlock pattern detected — blacklisted'],
-  ['y','Improving momentum: +8 — added to watchlist'],
-  ['g','Liquidity locked, contract renounced — strong signal'],
-  ['r','Dev wallet dump — removing'],
-  ['g','DexScreener confirmed — 2min old pair'],
-  ['r','Honeypot sim failed — skipping'],
-  ['g','Jupiter route calculated — swap ready'],
-];
+// ── MODAL ──
+async function openSnipeModal(t){
+  pending=t;jupQuote=null;
+  const cb=g('confirm-btn');cb.disabled=true;cb.textContent='FETCHING…';cb.onclick=confirmSnipe;
+  g('jup-status').textContent='Contacting Jupiter…';
+  const hp=g('modal-hp');hp.style.display='none';
+  if(t.rugData?.isHoneypot){hp.style.display='block';hp.textContent='⛔ HONEYPOT DETECTED — sell function may be disabled on this contract.';}
+  const sol=g('cfg-sol').value,slip=g('cfg-slip').value;
+  g('modal-rows').innerHTML=`
+    <div class="mrow"><span class="mk">Token</span><span class="mv">${t.name}</span></div>
+    <div class="mrow"><span class="mk">Mint</span><span class="mv" style="font-size:8px">${short(t.mint)}</span></div>
+    <div class="mrow"><span class="mk">Score</span><span class="mv" style="color:var(--gold)">${t.score}/100</span></div>
+    <div class="mrow"><span class="mk">Liquidity</span><span class="mv">$${Math.round(t.dex?.liquidity||0).toLocaleString()}</span></div>
+    <div class="mrow"><span class="mk">5m change</span><span class="mv">${t.dex?.priceChange5m||0}%</span></div>
+    <div class="mrow"><span class="mk">Buy</span><span class="mv" style="color:var(--gold)">${sol} SOL</span></div>
+    <div class="mrow"><span class="mk">Slippage</span><span class="mv">${slip}%</span></div>
+    <div class="mrow"><span class="mk">Tier 1 exit</span><span class="mv">+${g('cfg-tp1').value}% → sell ${g('cfg-tp1-pct').value}% of bag</span></div>
+    <div class="mrow"><span class="mk">Tier 2 exit</span><span class="mv">+${g('cfg-tp2').value}% → sell ${g('cfg-tp2-pct').value}% of remaining</span></div>
+    <div class="mrow"><span class="mk">Moon bag</span><span class="mv">${moonOn?'ON — rest held':'OFF'}</span></div>
+  `;
+  g('modal-links').innerHTML=`
+    <a href="https://solscan.io/token/${t.mint}"       target="_blank" class="xlink" style="font-size:8px">SOLSCAN ↗</a>
+    <a href="https://dexscreener.com/solana/${t.mint}" target="_blank" class="xlink" style="font-size:8px">DEXSCREENER ↗</a>
+    <a href="https://rugcheck.xyz/tokens/${t.mint}"    target="_blank" class="xlink" style="font-size:8px;color:var(--red);border-color:rgba(248,113,113,.3)">RUGCHECK ↗</a>
+  `;
+  g('modal-wrap').classList.add('open');
+  try{
+    jupQuote=await getQuote(t.mint,parseFloat(sol),parseFloat(slip));
+    const out=(parseInt(jupQuote.outAmount)/1e6).toFixed(2);
+    g('jup-status').innerHTML=`<span style="color:var(--green)">✓ Jupiter ready — ~${out} tokens</span>`;
+    cb.disabled=false;cb.textContent='CONFIRM BUY';
+  }catch(e){
+    g('jup-status').innerHTML=`<span style="color:var(--red)">Quote failed: ${e.message}</span>`;
+    cb.disabled=false;cb.textContent='RETRY';cb.onclick=()=>openSnipeModal(t);
+  }
+}
+function closeModal(){g('modal-wrap').classList.remove('open');pending=null;jupQuote=null;g('confirm-btn').onclick=confirmSnipe;}
+g('modal-wrap').addEventListener('click',function(e){if(e.target===this)closeModal();});
+async function confirmSnipe(){if(!pending)return;const t=pending;closeModal();await doSnipe(t);}
 
-function simulateTick(){
-  const m=SIM_MSGS[rn(0,SIM_MSGS.length-1)];
-  log(m[0],m[1]);
-  if(Math.random()<.3){
-    const tok={
-      name: SIM_NAMES[rn(0,SIM_NAMES.length-1)]+'/SOL',
-      mint: randMint(), score: rn(50,98),
-      age:  rn(5,300),  dex:  null, rugData:null,
-    };
-    const minScore=parseInt(document.getElementById('cfg-score').value);
-    if(tok.score>=minScore){ tokens.unshift(tok); if(tokens.length>9)tokens.pop(); }
-    else{ early++; improving.unshift(tok); if(improving.length>8)improving.pop(); }
-    renderOpps(); renderImproving();
+// ── SIMULATION ──
+const SN=['BONK','PEPE','WIF','BOME','POPCAT','MICHI','TURBO','MOODENG','PNUT','GOAT','GIGA','PONKE'];
+const SM=[['g','New pair on Raydium — analyzing'],['g','Volume spike +340% — flagging'],['y','Weak holder distribution'],['g','Strong buy pressure detected'],['r','LP unlock pattern — blacklisted'],['y','Score improving — watchlist'],['g','LP locked, renounced — strong signal'],['r','Dev wallet dump — removed'],['g','Fresh pair confirmed'],['r','Honeypot sim failed — skipped'],['g','Jupiter route calculated']];
+function simTick(){
+  const m=SM[rn(0,SM.length-1)];log(m[0],m[1]);
+  if(Math.random()<0.35){
+    const tok={name:SN[rn(0,SN.length-1)]+'/SOL',mint:rMint(),score:rn(50,98),age:rn(5,300),dex:null,rugData:null};
+    const ms=parseInt(g('cfg-score').value)||75;
+    if(tok.score>=ms){tokens.unshift(tok);if(tokens.length>9)tokens.pop();}
+    else{early++;improving.unshift(tok);if(improving.length>8)improving.pop();}
+    renderOpps();renderImproving();
   }
 }
 
-// ═══════════════════════════════════════════════════════
-// 20.  RENDER FUNCTIONS
-// ═══════════════════════════════════════════════════════
-function scoreBadge(s){
-  if(s>=80) return `<span class="score-badge score-high">${s}</span>`;
-  if(s>=65) return `<span class="score-badge score-mid">${s}</span>`;
-  return `<span class="score-badge score-low">${s}</span>`;
+// ── RENDER ──
+function sbadge(s){
+  if(s>=80)return`<span class="score score-hi">${s}</span>`;
+  if(s>=65)return`<span class="score score-md">${s}</span>`;
+  return`<span class="score score-lo">${s}</span>`;
 }
-
-function checkBadges(t){
-  const badges = [];
-  // DexScreener badges
+function chips(t){
+  const b=[];
   if(t.dex){
-    const liq = t.dex.liquidity || 0;
-    badges.push(liq > 10000
-      ? `<span class="ck ck-ok">DEX ✓</span>`
-      : `<span class="ck ck-warn">DEX LOW LIQ</span>`);
-    const ch = t.dex.priceChange5m || 0;
-    badges.push(ch > 10
-      ? `<span class="ck ck-ok">+${ch}% 5M</span>`
-      : ch < -15
-      ? `<span class="ck ck-bad">${ch}% 5M</span>`
-      : `<span class="ck ck-warn">${ch}% 5M</span>`);
-  } else {
-    badges.push('<span class="ck ck-load">DEX LOADING</span>');
-  }
-  // RugCheck badges
+    const l=t.dex.liquidity||0;
+    b.push(l>10000?'<span class="chip chip-ok">DEX ✓</span>':'<span class="chip chip-warn">LOW LIQ</span>');
+    const c=t.dex.priceChange5m||0;
+    b.push(c>10?`<span class="chip chip-ok">+${c}% 5m</span>`:c<-15?`<span class="chip chip-bad">${c}% 5m</span>`:`<span class="chip chip-warn">${c}% 5m</span>`);
+  }else b.push('<span class="chip chip-dim">DEX loading</span>');
   if(t.rugData){
-    badges.push(t.rugData.isHoneypot
-      ? '<span class="ck ck-bad">HONEYPOT</span>'
-      : '<span class="ck ck-ok">RUG ✓</span>');
-    badges.push(t.rugData.renounced
-      ? '<span class="ck ck-ok">RENOUNCED</span>'
-      : '<span class="ck ck-warn">NOT RENOUNCED</span>');
-    badges.push(t.rugData.lpLocked
-      ? '<span class="ck ck-ok">LP LOCKED</span>'
-      : '<span class="ck ck-bad">LP UNLOCKED</span>');
-  } else {
-    badges.push('<span class="ck ck-load">RUG LOADING</span>');
-  }
-  return `<div class="check-row">${badges.join('')}</div>`;
+    b.push(t.rugData.isHoneypot?'<span class="chip chip-bad">HONEYPOT</span>':'<span class="chip chip-ok">RUG ✓</span>');
+    b.push(t.rugData.renounced?'<span class="chip chip-ok">RENOUNCED</span>':'<span class="chip chip-warn">NOT RENOUNCED</span>');
+    b.push(t.rugData.lpLocked?'<span class="chip chip-ok">LP LOCKED</span>':'<span class="chip chip-bad">LP UNLOCKED</span>');
+  }else b.push('<span class="chip chip-dim">RUG loading</span>');
+  return`<div class="tok-checks">${b.join('')}</div>`;
 }
-
 function renderOpps(){
-  const el=document.getElementById('opp-list');
-  document.getElementById('opp-c').textContent=tokens.length+' tokens';
-  if(!tokens.length){
-    el.innerHTML='<div class="empty"><div class="ei">[ SCANNING... ]</div><div class="et">Waiting for new pairs</div></div>'; return;
-  }
+  const el=g('opp-list');g('opp-c').textContent=tokens.length;
+  if(!tokens.length){el.innerHTML='<div class="empty-state"><div class="empty-icon">— SCANNING —</div><div class="empty-msg">Waiting for new pairs</div></div>';return;}
   el.innerHTML=tokens.slice(0,7).map(t=>`
-    <div class="trow" style="flex-wrap:wrap;align-items:flex-start">
-      <div style="flex:1;min-width:0">
-        <div class="tn">${t.name}</div>
-        <div class="ta">${short(t.mint)} · ${t.age}s · $${Math.round(t.dex?.liquidity||0).toLocaleString()} liq</div>
-        ${checkBadges(t)}
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin-left:4px">
-        ${scoreBadge(t.score)}
-        <div style="display:flex;gap:3px">
-          <a href="https://solscan.io/token/${t.mint}"    target="_blank" class="xlink xlink-sol">SOL ↗</a>
-          <a href="https://rugcheck.xyz/tokens/${t.mint}" target="_blank" class="xlink xlink-rug">RUG ↗</a>
+    <div class="tok">
+      <div style="display:flex;align-items:flex-start;gap:6px">
+        <div style="flex:1">
+          <div class="tok-name">${t.name}</div>
+          <div class="tok-addr">${short(t.mint)} · ${t.age}s · $${Math.round(t.dex?.liquidity||0).toLocaleString()} liq</div>
+          ${chips(t)}
         </div>
-        <button class="snipe-btn" ${!walletConnected?'disabled':''} onclick='openSnipeModal(${JSON.stringify(t)})'>SNIPE</button>
+        ${sbadge(t.score)}
+      </div>
+      <div class="tok-actions">
+        <a href="https://solscan.io/token/${t.mint}"    target="_blank" class="xlink">SOL ↗</a>
+        <a href="https://rugcheck.xyz/tokens/${t.mint}" target="_blank" class="xlink xlink-rug">RUG ↗</a>
+        <button class="snipe" ${!walletConnected?'disabled':''} onclick='openSnipeModal(${JSON.stringify(t)})'>SNIPE</button>
       </div>
     </div>
   `).join('');
 }
-
 function renderImproving(){
-  const el=document.getElementById('imp-list');
-  document.getElementById('imp-c').textContent=improving.length;
-  if(!improving.length){
-    el.innerHTML='<div class="empty"><div class="ei">[ WATCHING ]</div><div class="et">Tokens below threshold</div></div>'; return;
-  }
+  const el=g('imp-list');g('imp-c').textContent=improving.length;
+  if(!improving.length){el.innerHTML='<div class="empty-state"><div class="empty-icon">— WATCHING —</div><div class="empty-msg">Below threshold</div></div>';return;}
   el.innerHTML=improving.slice(0,7).map(t=>`
-    <div class="trow">
-      <div style="flex:1;min-width:0">
-        <div class="tn">${t.name}</div>
-        <div class="ta">${short(t.mint)}</div>
+    <div class="tok">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="flex:1"><div class="tok-name">${t.name}</div><div class="tok-addr">${short(t.mint)}</div>${chips(t)}</div>
+        ${sbadge(t.score)}
       </div>
-      ${scoreBadge(t.score)}
-      <a href="https://dexscreener.com/solana/${t.mint}" target="_blank" class="xlink xlink-dex">DEX ↗</a>
+      <div class="tok-actions"><a href="https://dexscreener.com/solana/${t.mint}" target="_blank" class="xlink">CHART ↗</a></div>
     </div>
   `).join('');
 }
-
 function renderPositions(){
-  const el=document.getElementById('pos-list');
+  const el=g('pos-list');
   const open=positions.filter(p=>p.open);
   const closed=positions.filter(p=>!p.open).slice(0,4);
-  document.getElementById('pos-c').textContent=open.length+' open';
-  if(!positions.length){
-    el.innerHTML='<div class="empty"><div class="ei">[ NO POSITIONS ]</div><div class="et">Snipe a token to open a position</div></div>'; return;
-  }
+  g('pos-c').textContent=open.length+' open';
+  if(!positions.length){el.innerHTML='<div class="empty-state"><div class="empty-icon">— NO POSITIONS —</div><div class="empty-msg">Snipe a token to open</div></div>';return;}
   el.innerHTML=[...open,...closed].map(p=>{
-    const pnlClass = p.pnl>=0 ? 'up' : 'dn';
-    const pnlStr   = (p.pnl>=0?'+':'')+p.pnl.toFixed(4)+' SOL';
-    const remPct   = Math.round((p.remainingPct||0)*100);
-    const entryCost= (p.entry*(p.remainingPct||0)).toFixed(4);
-
-    // tier status badges
-    const t1Label  = `T1 +${document.getElementById('cfg-tp1')?.value||100}%`;
-    const t2Label  = `T2 +${document.getElementById('cfg-tp2')?.value||300}%`;
-    const t1Class  = p.tier1Hit ? 'hit' : (p.open ? 'pending' : 'missed');
-    const t2Class  = p.tier2Hit ? 'hit' : (p.open && p.tier1Hit ? 'pending' : p.open ? 'pending' : 'missed');
-    const moonClass= (p.open && p.tier1Hit) ? 'moon' : (p.open ? 'pending' : remPct>0?'moon':'missed');
-    const moonLabel= p.open && remPct > 0 ? `MOON BAG ${remPct}%` : remPct>0?`MOON ${remPct}%`:'CLOSED';
-
-    return `<div class="pos-card">
-      <div class="pos-header">
+    const rem=Math.round((p.remainingPct||0)*100);
+    const pnlStr=(p.pnl>=0?'+':'')+p.pnl.toFixed(4)+' SOL';
+    const t1l=`T1 +${g('cfg-tp1')?.value||100}%`;
+    const t2l=`T2 +${g('cfg-tp2')?.value||300}%`;
+    const moonLbl=p.open&&rem>0?`MOON ${rem}%`:rem>0?`MOON ${rem}%`:'CLOSED';
+    const t1c=p.tier1Hit?'hit':p.open?'pending':'missed';
+    const t2c=p.tier2Hit?'hit':p.open?'pending':'missed';
+    const moonC=(p.open&&rem>0&&(p.tier1Hit||p.tier2Hit))?'moon':p.open?'pending':rem>0?'moon':'missed';
+    const cardC=p.open?'':p.pnl>0?'closed win':'closed loss';
+    return`<div class="pos-card ${cardC}">
+      <div class="pos-top">
         <span class="pos-name">${p.name}</span>
-        <span class="pos-pnl ${pnlClass}">${p.open?'LIVE — ':''}${pnlStr}</span>
+        <span class="pos-pnl ${p.pnl>=0?'up':'dn'}">${p.open?'LIVE · ':''}${pnlStr}</span>
       </div>
-      <div class="tier-bar">
-        <span class="tier ${t1Class}">${t1Label} ${p.tier1Hit?'✓':''}</span>
-        <span class="tier ${t2Class}">${t2Label} ${p.tier2Hit?'✓':''}</span>
-        <span class="tier ${moonClass}">${moonLabel}</span>
+      <div class="tier-row">
+        <span class="tier-chip ${t1c}">${t1l} ${p.tier1Hit?'✓':''}</span>
+        <span class="tier-chip ${t2c}">${t2l} ${p.tier2Hit?'✓':''}</span>
+        <span class="tier-chip ${moonC}">${moonLbl}</span>
       </div>
-      ${p.open && remPct > 0 ? `
-      <div class="remaining-bar">
-        <div class="remaining-fill" style="width:${remPct}%"></div>
-      </div>` : ''}
+      ${p.open&&rem>0?`<div class="rem-bar"><div class="rem-fill" style="width:${rem}%"></div></div>`:''}
       <div class="pos-meta">
-        <span>Entry: ${p.entry.toFixed(4)} SOL</span>
-        <span>Still in: ${entryCost} SOL (${remPct}%)</span>
+        <span>Entry ${p.entry.toFixed(4)} SOL</span>
+        <span>In: ${(p.entry*(p.remainingPct||0)).toFixed(4)} SOL (${rem}%)</span>
         <span>${p.time}</span>
       </div>
       <div class="pos-links">
-        <a href="https://solscan.io/tx/${p.txHash}"            target="_blank" class="xlink xlink-sol">BUY TX ↗</a>
-        ${p.tier1Tx?`<a href="https://solscan.io/tx/${p.tier1Tx}" target="_blank" class="xlink xlink-sol">T1 TX ↗</a>`:''}
-        ${p.tier2Tx?`<a href="https://solscan.io/tx/${p.tier2Tx}" target="_blank" class="xlink xlink-sol">T2 TX ↗</a>`:''}
-        <a href="https://dexscreener.com/solana/${p.mint}"     target="_blank" class="xlink xlink-dex">CHART ↗</a>
+        <a href="https://solscan.io/tx/${p.txHash}" target="_blank" class="xlink" style="font-size:8px">BUY TX ↗</a>
+        ${p.tier1Tx?`<a href="https://solscan.io/tx/${p.tier1Tx}" target="_blank" class="xlink" style="font-size:8px">T1 TX ↗</a>`:''}
+        ${p.tier2Tx?`<a href="https://solscan.io/tx/${p.tier2Tx}" target="_blank" class="xlink" style="font-size:8px">T2 TX ↗</a>`:''}
+        <a href="https://dexscreener.com/solana/${p.mint}" target="_blank" class="xlink" style="font-size:8px">CHART ↗</a>
       </div>
     </div>`;
   }).join('');
 }
-
 function updateStats(){
-  document.getElementById('s1').textContent=scanned;
-  document.getElementById('s2').textContent=tracked;
-  document.getElementById('s3').textContent=snipes;
-  document.getElementById('s5').textContent=early;
-  document.getElementById('s6').textContent=rugBlocked;
-  const p=document.getElementById('s4');
-  p.textContent=(profit>=0?'+':'')+profit.toFixed(3);
-  p.style.color=profit>=0?'var(--g)':'var(--r)';
+  g('s1').textContent=scanned;g('s2').textContent=tracked;
+  g('s3').textContent=snipes;g('s5').textContent=early;g('s6').textContent=rugBlocked;
+  const el=g('s4');el.textContent=(profit>=0?'+':'')+profit.toFixed(3);
+  el.className='stat-val '+(profit>0?'green':profit<0?'danger':'gold');
 }
 
-// ═══════════════════════════════════════════════════════
-// 21.  TICKER TAPE
-// ═══════════════════════════════════════════════════════
-(function buildTicker(){
-  const items=[
-    {n:'SOL/USD',v:'$148.32',up:true},{n:'BONK',v:'+12.4%',up:true},
-    {n:'WIF',v:'-3.1%',up:false},{n:'POPCAT',v:'+44.2%',up:true},
-    {n:'MOODENG',v:'+7.8%',up:true},{n:'PEPE',v:'-1.9%',up:false},
-    {n:'JUP',v:'+5.2%',up:true},{n:'BOME',v:'+28.1%',up:true},
-    {n:'MYRO',v:'-8.4%',up:false},{n:'TURBO',v:'+15.0%',up:true},
-  ];
-  const html=[...items,...items].map(i=>`<div class="tick-item ${i.up?'up':'dn'}">${i.n} &nbsp; ${i.v}</div>`).join('');
-  document.getElementById('ticker-inner').innerHTML=html;
+// ── TICKER ──
+(()=>{
+  const items=[{n:'SOL/USD',v:'$148.32',up:true},{n:'BONK',v:'+12.4%',up:true},{n:'WIF',v:'-3.1%',up:false},{n:'POPCAT',v:'+44.2%',up:true},{n:'MOODENG',v:'+7.8%',up:true},{n:'PEPE',v:'-1.9%',up:false},{n:'JUP',v:'+5.2%',up:true},{n:'BOME',v:'+28.1%',up:true},{n:'MYRO',v:'-8.4%',up:false},{n:'TURBO',v:'+15.0%',up:true}];
+  g('ticker-inner').innerHTML=[...items,...items].map(i=>`<div class="tick ${i.up?'up':'dn'}">${i.n}  ${i.v}</div>`).join('');
 })();
 
-// ═══════════════════════════════════════════════════════
-// 22.  KEYBOARD SHORTCUT
-// ═══════════════════════════════════════════════════════
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+// ── API PINGS ──
+(async()=>{setApi('jup','warn','checking');try{const r=await fetch(`${JUP_QUOTE}?inputMint=${SOL_MINT}&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=1000000&slippageBps=50`,{signal:AbortSignal.timeout(6000)});setApi('jup',r.ok?'live':'warn',r.ok?'ready':'degraded');}catch(e){setApi('jup','dead','error');}})();
+(async()=>{setApi('dex','warn','checking');try{const r=await fetch(`https://api.dexscreener.com/latest/dex/tokens/${SOL_MINT}`,{signal:AbortSignal.timeout(5000)});setApi('dex',r.ok?'live':'warn',r.ok?'ready':'degraded');}catch(e){setApi('dex','dead','error');}})();
+(async()=>{setApi('rug','warn','checking');try{const r=await fetch(`https://api.rugcheck.xyz/v1/tokens/${SOL_MINT}/report`,{signal:AbortSignal.timeout(6000)});setApi('rug',r.ok?'live':'warn',r.ok?'ready':'slow');}catch(e){setApi('rug','warn','slow');}})();
 
-// ═══════════════════════════════════════════════════════
-// 23.  INIT LOG MESSAGES
-// ═══════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════
-// API STATUS HELPERS
-// ═══════════════════════════════════════════════════════
-function setApiStatus(api, state, label){
-  const dot = document.getElementById('dot-'+api);
-  const val = document.getElementById('val-'+api);
-  if(!dot||!val) return;
-  dot.className = 'api-dot '+state;
-  val.className = 'api-val '+state;
-  val.textContent = label;
-  apiHealth[api] = (state==='live'||state==='warn');
-}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
-function updateApiCalls(){
-  const el = document.getElementById('val-calls');
-  if(el) el.textContent = `${apiCalls} calls / ${apiErrors} errors`;
-}
-
-// ping Jupiter on load to check it's alive
-(async()=>{
-  try{
-    setApiStatus('jup','warn','CHECKING');
-    const r = await fetch('https://quote-api.jup.ag/v6/quote?inputMint='+SOL_MINT+'&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=1000000&slippageBps=50',{signal:AbortSignal.timeout(5000)});
-    if(r.ok){ setApiStatus('jup','live','READY'); }
-    else throw new Error();
-  } catch(e){ setApiStatus('jup','dead','ERROR'); }
-})();
-
-// ping DexScreener
-(async()=>{
-  try{
-    setApiStatus('dex','warn','CHECKING');
-    const r = await fetch('https://api.dexscreener.com/latest/dex/tokens/So11111111111111111111111111111111111111112',{signal:AbortSignal.timeout(5000)});
-    if(r.ok){ setApiStatus('dex','live','READY'); }
-    else throw new Error();
-  } catch(e){ setApiStatus('dex','dead','ERROR'); }
-})();
-
-// ping RugCheck
-(async()=>{
-  try{
-    setApiStatus('rug','warn','CHECKING');
-    const r = await fetch('https://api.rugcheck.xyz/v1/tokens/So11111111111111111111111111111111111111112/report',{signal:AbortSignal.timeout(5000)});
-    setApiStatus('rug', r.ok?'live':'warn', r.ok?'READY':'DEGRADED');
-  } catch(e){ setApiStatus('rug','warn','SLOW'); }
-})();
-
-setTimeout(()=>log('g','Terminal initialized — PumpPortal + DexScreener + Jupiter ready'),400);
-setTimeout(()=>log('w','TIP: Verify every token on RugCheck before sniping'),900);
-setTimeout(()=>log('y','TIP: Start with 0.1 SOL per snipe — test before going big'),1400);
-setTimeout(()=>log('g','Honeypot detection active — contracts checked before snipe'),1900);
+setTimeout(()=>log('g','BankMaker7 initialized — PumpPortal + DexScreener + RugCheck + Jupiter ready'),400);
+setTimeout(()=>log('y','Add Helius keys in the CONFIG section at the top of index.html to fix RPC errors'),900);
+setTimeout(()=>log('g','Scaled exits active — Tier 1 → Tier 2 → Moon bag'),1400);
 </script>
 </body>
 </html>
