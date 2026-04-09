@@ -397,8 +397,8 @@ body{font-family:var(--font);background:var(--navy);color:var(--text);min-height
 
   <div class="setting-block">
     <div class="sb-title">Snipe Settings</div>
-    <div class="srow"><span class="sk">Buy amount (SOL)</span>   <input class="sinput" id="cfg-sol"   type="number" value="0.1"   step="0.05" min="0.01" max="10"></div>
-    <div class="srow"><span class="sk">Min score</span>          <input class="sinput" id="cfg-score" type="number" value="60"   step="5"    min="50" max="99"></div>
+    <div class="srow"><span class="sk">Buy amount (SOL)</span>   <input class="sinput" id="cfg-sol"   type="number" value="0.01"  step="0.005" min="0.005" max="10"></div>
+    <div class="srow"><span class="sk">Min score</span>          <input class="sinput" id="cfg-score" type="number" value="75"   step="5"    min="50" max="99"></div>
     <div class="srow"><span class="sk">Slippage %</span>         <input class="sinput" id="cfg-slip"  type="number" value="15"   step="1"    min="1" max="50"></div>
     <div class="srow"><span class="sk">Priority fee (SOL)</span> <input class="sinput" id="cfg-fee"   type="number" value="0.001" step="0.0005" min="0"></div>
   </div>
@@ -507,7 +507,7 @@ body{font-family:var(--font);background:var(--navy);color:var(--text);min-height
 //  2. Dashboard → Create API Key (make two)
 //  3. Paste your keys below and redeploy
 // ═══════════════════════════════════════
-const HELIUS_KEY_1 = '66293518-e517-479e-bc4e-7a12a81ed6ae'; 
+const HELIUS_KEY_1 = '66293518-e517-479e-bc4e-7a12a81ed6ae';
 const HELIUS_KEY_2 = '76293689-99be-45ab-9910-5c76a9ae79c7';
 
 const RPC_ENDPOINTS = [
@@ -691,13 +691,11 @@ async function checkRug(mint){
     const safe = notFound ? true : (score<500&&!isHoneypot);
     const label = notFound?'new token':safe?'safe':'risky '+score;
     setApi('rug',notFound?'warn':safe?'live':'dead',label);
-    return{safe,isHoneypot,risks,score,lpLocked:!lpUnlocked,renounced:!notRenounced,notFound};
+    return{safe,isHoneypot,risks,score,lpLocked:!lpUnlocked,renounced:!notRenounced,notFound,checkFailed:false};
   }catch(e){
-    // RugCheck unavailable (CORS or timeout) — don't block the token, just flag it
     bumpApi(true);
-    setApi('rug','warn','cors/timeout');
-    // Return safe=true so tokens still show — user can manually check via RUG ↗ link
-    return{safe:true,isHoneypot:false,risks:['RugCheck unavailable — verify manually'],score:0,lpLocked:true,renounced:true};
+    setApi('rug','warn','timeout');
+    return{safe:true,isHoneypot:false,risks:[],score:0,lpLocked:true,renounced:true,checkFailed:true};
   }
 }
 
@@ -749,16 +747,22 @@ async function handleToken(tok){
     if(!rugData.safe&&rugOn){rugBlocked++;log('r',`Rug blocked: ${tok.name} (score ${rugData.score})`,null,tok.mint);updateStats();return;}
   }
   const minScore=parseInt(g('cfg-score').value)||75;
+  const minLiq=3000; // minimum $3k liquidity for Jupiter to route a swap
+
   if(tok.score>=minScore){
     tokens.unshift(tok);if(tokens.length>9)tokens.pop();
-    const liqStr=dexData?` · $${Math.round(dexData.liquidity).toLocaleString()} liq`:'';
+    const liq=dexData?.liquidity||0;
+    const liqStr=dexData?` · $${Math.round(liq).toLocaleString()} liq`:'';
     log('g',`Signal: ${tok.name} score ${tok.score}/100${liqStr}`,null,tok.mint);
+
     if(autoSnipe&&walletConnected){
-      // Double-check mint is a real Solana address before auto-buying
       if(!isSolAddr(tok.mint)){
-        log('r','Auto-snipe skipped — invalid mint address: '+tok.name);
+        log('r','Auto-snipe skipped — invalid mint: '+tok.name);
+      }else if(!dexData||liq<minLiq){
+        // Token not indexed on DEX yet or liquidity too low — Jupiter will fail
+        log('y',`Auto-snipe waiting — liq $${Math.round(liq).toLocaleString()} below $${minLiq.toLocaleString()} minimum: ${tok.name}`);
       }else{
-        log('y','Auto-snipe firing: '+tok.name+' (score '+tok.score+')');
+        log('y','Auto-snipe firing: '+tok.name+' score '+tok.score+' liq $'+Math.round(liq).toLocaleString());
         pending=tok;await doSnipe(tok);
       }
     }
