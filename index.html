@@ -507,8 +507,8 @@ body{font-family:var(--font);background:var(--navy);color:var(--text);min-height
 //  2. Dashboard → Create API Key (make two)
 //  3. Paste your keys below and redeploy
 // ═══════════════════════════════════════
-const HELIUS_KEY_1 = 'https://mainnet.helius-rpc.com/?api-key=76293689-99be-45ab-9910-5c76a9ae79c7';
-const HELIUS_KEY_2 = 'https://mainnet.helius-rpc.com/?api-key=66293518-e517-479e-bc4e-7a12a81ed6ae';
+const HELIUS_KEY_1 = '76293689-99be-45ab-9910-5c76a9ae79c7';
+const HELIUS_KEY_2 = '66293518-e517-479e-bc4e-7a12a81ed6ae';
 
 const RPC_ENDPOINTS = [
   `https://mainnet.helius-rpc.com/?api-key=${HELIUS_KEY_1}`,
@@ -575,16 +575,33 @@ function bumpApi(err=false){if(err)apiErrors++;apiCalls++;g('av-calls').textCont
 async function rpcCall(method,params,idx=0){
   if(idx>=RPC_ENDPOINTS.length)throw new Error('All RPCs failed');
   const rpc=RPC_ENDPOINTS[idx];
-  if(rpc.includes('YOUR-HELIUS-KEY'))return rpcCall(method,params,idx+1);
+  if(rpc.includes('YOUR-HELIUS-KEY')){
+    // key not set yet — skip silently and try next
+    return rpcCall(method,params,idx+1);
+  }
   try{
-    const res=await fetch(rpc,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params}),signal:AbortSignal.timeout(6000)});
+    const res=await fetch(rpc,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({jsonrpc:'2.0',id:1,method,params}),
+      signal:AbortSignal.timeout(7000)
+    });
     if(!res.ok)throw new Error('HTTP '+res.status);
     const data=await res.json();
-    if(data.error)throw new Error(data.error.message);
-    const lbl=rpc.includes('helius')?'Helius ✓':rpc.includes('ankr')?'Ankr':'Mainnet';
+    if(data.error){
+      // rate limited — try next
+      if(data.error.code===-32429||data.error.message?.includes('rate'))
+        return rpcCall(method,params,idx+1);
+      throw new Error(data.error.message);
+    }
+    // success — show which RPC worked
+    const lbl=rpc.includes('helius')?'Helius ✓':rpc.includes('ankr')?'Ankr ✓':'Mainnet ✓';
     const chip=g('rpc-chip');chip.textContent=lbl;chip.className='ok';
     return data.result;
-  }catch(e){return rpcCall(method,params,idx+1);}
+  }catch(e){
+    // network / timeout — try next silently
+    return rpcCall(method,params,idx+1);
+  }
 }
 
 async function fetchBalance(){
@@ -714,11 +731,19 @@ async function handleToken(tok){
 async function getQuote(outMint,solAmt,slipPct){
   bumpApi();setApi('jup','warn','quoting');
   const url=`${JUP_QUOTE}?inputMint=${SOL_MINT}&outputMint=${outMint}&amount=${Math.round(solAmt*1e9)}&slippageBps=${Math.round(slipPct*100)}`;
-  const res=await fetch(url,{signal:AbortSignal.timeout(8000)});
-  if(!res.ok){bumpApi(true);throw new Error('Quote HTTP '+res.status);}
-  const q=await res.json();
-  if(q.error){bumpApi(true);throw new Error(q.error);}
-  setApi('jup','live','ready');return q;
+  let lastErr='';
+  // try up to 2 times (Jupiter can be briefly slow)
+  for(let attempt=0;attempt<2;attempt++){
+    try{
+      const res=await fetch(url,{signal:AbortSignal.timeout(10000)});
+      if(!res.ok){lastErr='Jupiter HTTP '+res.status;continue;}
+      const q=await res.json();
+      if(q.error){lastErr='Jupiter: '+q.error;continue;}
+      setApi('jup','live','ready');return q;
+    }catch(e){lastErr=e.message;await new Promise(r=>setTimeout(r,1500));}
+  }
+  bumpApi(true);setApi('jup','dead','error');
+  throw new Error(lastErr||'Jupiter quote failed');
 }
 
 async function execSwap(quote,pubkey,feeSol){
@@ -800,14 +825,53 @@ function doRug(pos){if(!pos.open)return;const loss=f4(pos.entry*pos.remainingPct
 // ── PUMPPORTAL ──
 function connectPump(){
   if(ws)ws.close();
-  ws=new WebSocket(PUMP_WS);
-  ws.onopen=()=>{ws.send(JSON.stringify({method:'subscribeNewToken'}));setApi('pump','live','live');setBotLabel('PUMP LIVE');log('g','PumpPortal connected — streaming new launches');};
+  setApi('pump','warn','connecting');
+  log('y','Connecting to PumpPortal WebSocket...');
+
+  let connectTimer=setTimeout(()=>{
+    // If no open event within 8s, assume WS is blocked and fall back
+    log('y','PumpPortal timeout — switching to DexScreener fallback');
+    if(ws){try{ws.close();}catch(e){} ws=null;}
+    useFallback=true; startFallback();
+  }, 8000);
+
+  try{
+    ws=new WebSocket(PUMP_WS);
+  }catch(e){
+    clearTimeout(connectTimer);
+    log('y','PumpPortal WS unavailable — using DexScreener fallback');
+    useFallback=true; startFallback(); return;
+  }
+
+  ws.onopen=()=>{
+    clearTimeout(connectTimer);
+    ws.send(JSON.stringify({method:'subscribeNewToken'}));
+    setApi('pump','live','live');setBotLabel('PUMP LIVE');
+    log('g','PumpPortal connected — streaming new token launches');
+  };
   ws.onmessage=async(e)=>{
     if(!running)return;
-    try{const d=JSON.parse(e.data);if(!d.mint)return;scanned++;await handleToken({name:(d.symbol||d.name||'TOKEN')+'/SOL',mint:d.mint,score:50,age:0});}catch(_){}
+    try{
+      const d=JSON.parse(e.data);
+      if(!d.mint)return;
+      scanned++;
+      await handleToken({name:(d.symbol||d.name||'TOKEN')+'/SOL',mint:d.mint,score:50,age:0});
+    }catch(_){}
   };
-  ws.onerror=()=>{setApi('pump','dead','error');log('y','PumpPortal error — falling back to DexScreener');useFallback=true;startFallback();};
-  ws.onclose=()=>{if(running&&!useFallback){setApi('pump','warn','reconnecting');log('y','PumpPortal closed — reconnect in 5s');setTimeout(connectPump,5000);}};
+  ws.onerror=(e)=>{
+    clearTimeout(connectTimer);
+    setApi('pump','dead','error');
+    log('y','PumpPortal error — switching to DexScreener fallback');
+    useFallback=true; startFallback();
+  };
+  ws.onclose=()=>{
+    clearTimeout(connectTimer);
+    if(running&&!useFallback){
+      setApi('pump','warn','reconnecting');
+      log('y','PumpPortal closed — reconnecting in 5s');
+      setTimeout(connectPump,5000);
+    }
+  };
 }
 
 // ── FALLBACK ──
@@ -834,7 +898,11 @@ function startFallback(){
 function setBotLabel(txt){const s=g('scan-txt');s.textContent=txt;}
 
 function toggleBot(){
-  if(!walletConnected&&!running){log('r','Connect Phantom first');toast('Connect wallet first','red');return;}
+  if(!walletConnected&&!running){
+    // Allow demo mode without wallet — real snipes will require wallet
+    log('y','Starting in demo mode — connect Phantom to enable real trades');
+    toast('Demo mode — connect Phantom for real trades','amber');
+  }
   running=!running;
   const btn=g('main-btn'),dot=g('sdot');
   if(running){
@@ -1030,15 +1098,40 @@ function updateStats(){
 })();
 
 // ── API PINGS ──
-(async()=>{setApi('jup','warn','checking');try{const r=await fetch(`${JUP_QUOTE}?inputMint=${SOL_MINT}&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=1000000&slippageBps=50`,{signal:AbortSignal.timeout(6000)});setApi('jup',r.ok?'live':'warn',r.ok?'ready':'degraded');}catch(e){setApi('jup','dead','error');}})();
+(async()=>{
+  setApi('jup','warn','checking');
+  try{
+    // Use price API instead of quote — less rate limited, no CORS issues
+    const r=await fetch('https://price.jup.ag/v6/price?ids=SOL',{signal:AbortSignal.timeout(8000)});
+    if(r.ok){setApi('jup','live','ready');log('g','Jupiter API ready');}
+    else throw new Error('HTTP '+r.status);
+  }catch(e){
+    // Fallback: try the quote API directly
+    try{
+      const r2=await fetch(`${JUP_QUOTE}?inputMint=${SOL_MINT}&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=100000000&slippageBps=50`,{signal:AbortSignal.timeout(8000)});
+      setApi('jup',r2.ok?'live':'warn',r2.ok?'ready':'degraded');
+      if(r2.ok)log('g','Jupiter quote API ready');
+    }catch(e2){setApi('jup','warn','checking later');}
+  }
+})();
 (async()=>{setApi('dex','warn','checking');try{const r=await fetch(`https://api.dexscreener.com/latest/dex/tokens/${SOL_MINT}`,{signal:AbortSignal.timeout(5000)});setApi('dex',r.ok?'live':'warn',r.ok?'ready':'degraded');}catch(e){setApi('dex','dead','error');}})();
 (async()=>{setApi('rug','warn','checking');try{const r=await fetch(`https://api.rugcheck.xyz/v1/tokens/${SOL_MINT}/report`,{signal:AbortSignal.timeout(6000)});setApi('rug',r.ok?'live':'warn',r.ok?'ready':'slow');}catch(e){setApi('rug','warn','slow');}})();
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 setTimeout(()=>log('g','BankMaker7 initialized — PumpPortal + DexScreener + RugCheck + Jupiter ready'),400);
-setTimeout(()=>log('y','Add Helius keys in the CONFIG section at the top of index.html to fix RPC errors'),900);
-setTimeout(()=>log('g','Scaled exits active — Tier 1 → Tier 2 → Moon bag'),1400);
+setTimeout(()=>{
+  const k1=HELIUS_KEY_1.includes('YOUR-HELIUS');
+  const k2=HELIUS_KEY_2.includes('YOUR-HELIUS');
+  if(k1&&k2){
+    log('y','⚠ No Helius keys set — using public RPC (slower, may fail). Get free keys at helius.dev');
+  }else if(k1||k2){
+    log('g','One Helius key active — add a second at helius.dev for redundancy');
+  }else{
+    log('g','✓ Both Helius keys set — RPC ready');
+  }
+},600);
+setTimeout(()=>log('g','Scaled exits: Tier 1 → partial sell → Tier 2 → partial sell → Moon bag held'),1200);
 </script>
 </body>
 </html>
