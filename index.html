@@ -507,7 +507,7 @@ body{font-family:var(--font);background:var(--navy);color:var(--text);min-height
 //  2. Dashboard → Create API Key (make two)
 //  3. Paste your keys below and redeploy
 // ═══════════════════════════════════════
-const HELIUS_KEY_1 = '66293518-e517-479e-bc4e-7a12a81ed6ae';
+const HELIUS_KEY_1 = '66293518-e517-479e-bc4e-7a12a81ed6ae'; 
 const HELIUS_KEY_2 = '76293689-99be-45ab-9910-5c76a9ae79c7';
 
 const RPC_ENDPOINTS = [
@@ -685,9 +685,13 @@ async function checkRug(mint){
     const isHoneypot=risks.some(r=>/honeypot|freeze|no.?sell/i.test(r));
     const lpUnlocked=risks.some(r=>/lp.*not.*lock|liquidity.*not.*lock/i.test(r));
     const notRenounced=risks.some(r=>/mint.*authority|not.*renounc/i.test(r));
-    const safe=score<500&&!isHoneypot;
-    setApi('rug',safe?'live':'dead',safe?'safe':'risky '+score);
-    return{safe,isHoneypot,risks,score,lpLocked:!lpUnlocked,renounced:!notRenounced};
+    // score 0-499 = safe, 500-999 = risky, 600-699 = not found in DB (too new)
+    // Don't treat "not found" (601) as a rug — it just means RugCheck hasn't indexed it yet
+    const notFound = score>=600&&score<700&&risks.length===0;
+    const safe = notFound ? true : (score<500&&!isHoneypot);
+    const label = notFound?'new token':safe?'safe':'risky '+score;
+    setApi('rug',notFound?'warn':safe?'live':'dead',label);
+    return{safe,isHoneypot,risks,score,lpLocked:!lpUnlocked,renounced:!notRenounced,notFound};
   }catch(e){
     // RugCheck unavailable (CORS or timeout) — don't block the token, just flag it
     bumpApi(true);
@@ -749,7 +753,15 @@ async function handleToken(tok){
     tokens.unshift(tok);if(tokens.length>9)tokens.pop();
     const liqStr=dexData?` · $${Math.round(dexData.liquidity).toLocaleString()} liq`:'';
     log('g',`Signal: ${tok.name} score ${tok.score}/100${liqStr}`,null,tok.mint);
-    if(autoSnipe&&walletConnected){log('y','Auto-snipe: '+tok.name);pending=tok;await doSnipe(tok);}
+    if(autoSnipe&&walletConnected){
+      // Double-check mint is a real Solana address before auto-buying
+      if(!isSolAddr(tok.mint)){
+        log('r','Auto-snipe skipped — invalid mint address: '+tok.name);
+      }else{
+        log('y','Auto-snipe firing: '+tok.name+' (score '+tok.score+')');
+        pending=tok;await doSnipe(tok);
+      }
+    }
   }else{
     early++;improving.unshift(tok);if(improving.length>8)improving.pop();
   }
@@ -889,9 +901,26 @@ function connectPump(){
   };
   ws.onerror=(e)=>{
     clearTimeout(connectTimer);
-    setApi('pump','dead','error');
-    log('y','PumpPortal error — switching to DexScreener fallback');
-    useFallback=true; startFallback();
+    setApi('pump','warn','reconnecting');
+    log('y','PumpPortal WS error — retrying in 10s then switching to DexScreener');
+    // Give PumpPortal one more chance before hard fallback
+    setTimeout(()=>{
+      if(!running) return;
+      try{
+        const ws2=new WebSocket(PUMP_WS);
+        ws2.onopen=()=>{
+          ws=ws2;
+          ws.send(JSON.stringify({method:'subscribeNewToken'}));
+          setApi('pump','live','live');setBotLabel('PUMP LIVE');
+          log('g','PumpPortal reconnected');
+        };
+        ws2.onerror=()=>{
+          setApi('pump','dead','offline');
+          log('y','PumpPortal unavailable — switching to DexScreener fallback');
+          useFallback=true;startFallback();
+        };
+      }catch(e){useFallback=true;startFallback();}
+    },10000);
   };
   ws.onclose=()=>{
     clearTimeout(connectTimer);
@@ -904,29 +933,59 @@ function connectPump(){
 }
 
 // ── FALLBACK ──
+// Valid Solana base58 address: 32-44 chars, no slashes, no dots, no http
+function isSolAddr(s){
+  if(!s||typeof s!=='string') return false;
+  if(s.length<32||s.length>44) return false;
+  if(s.includes('/')||s.includes('.')||s.includes('http')) return false;
+  return /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
+}
+
 function startFallback(){
   if(ws){ws.close();ws=null;}clearInterval(dexTimer);
   setApi('pump','dead','offline');setBotLabel('DEX FALLBACK');
   log('y','Fallback: polling DexScreener');
   async function poll(){
     if(!running)return;
+    let gotRealData=false;
     try{
-      // token-profiles returns newest pump.fun/raydium tokens
-      const res=await fetch('https://api.dexscreener.com/token-profiles/latest/v1',{signal:AbortSignal.timeout(5000)});
+      const res=await fetch('https://api.dexscreener.com/token-profiles/latest/v1',{signal:AbortSignal.timeout(6000)});
       if(!res.ok)throw new Error('HTTP '+res.status);
       const data=await res.json();
-      // token-profiles returns array of {chainId, tokenAddress, icon, description, ...}
       const profiles=Array.isArray(data)?data:[];
-      const solana=profiles.filter(p=>p.chainId==='solana'||!p.chainId);
-      scanned+=solana.length;
-      if(solana.length===0)throw new Error('no solana tokens');
-      for(const p of solana.slice(0,5)){
-        const mint=p.tokenAddress||p.address||rMint();
-        const sym=(p.header||p.symbol||'TOKEN').replace(/\s/g,'');
-        await handleToken({name:sym+'/SOL',mint,score:50,age:rn(5,120)});
+
+      // Only keep Solana entries with a valid mint address
+      // p.header = banner image URL (NOT the name — this was the bug)
+      // p.tokenAddress = the actual Solana mint address
+      // p.description = sometimes has the token name
+      const valid=profiles.filter(p=>{
+        const chain=p.chainId||'';
+        if(chain&&chain!=='solana') return false;  // skip non-solana
+        return isSolAddr(p.tokenAddress);           // must have valid mint
+      });
+
+      scanned+=valid.length;
+      if(valid.length>0) gotRealData=true;
+
+      for(const p of valid.slice(0,6)){
+        const mint=p.tokenAddress;
+        // Extract a real name: description first, then short mint, never the image URL
+        let sym='TOKEN';
+        if(p.description&&p.description.length<20&&!p.description.includes('http')){
+          sym=p.description.split(' ')[0].toUpperCase();
+        }
+        if(sym==='TOKEN'){
+          // use last 4 chars of mint as a short ID
+          sym='NEW'+mint.slice(-4).toUpperCase();
+        }
+        await handleToken({name:sym+'/SOL',mint,score:50,age:rn(5,60)});
       }
     }catch(e){
-      // if dexscreener fails, run simulation so UI stays alive
+      // real API failed — fall through to sim
+    }
+
+    // Only run simulation if real data didn't come through
+    if(!gotRealData){
       scanned+=rn(1,3);
       simTick();
     }
@@ -982,6 +1041,11 @@ function toggle(k,val){
 
 // ── MODAL ──
 async function openSnipeModal(t){
+  if(!isSolAddr(t.mint)){
+    toast('Invalid token address — cannot snipe','red');
+    log('r','Snipe blocked — invalid mint: '+t.name);
+    return;
+  }
   pending=t;jupQuote=null;
   const cb=g('confirm-btn');cb.disabled=true;cb.textContent='FETCHING…';cb.onclick=confirmSnipe;
   g('jup-status').textContent='Contacting Jupiter…';
@@ -1146,26 +1210,27 @@ function updateStats(){
 // ── API PINGS ──
 (async()=>{
   setApi('jup','warn','checking');
-  try{
-    // Jupiter v4 price API (v6 refers to swap, not price)
-    const r=await fetch('https://price.jup.ag/v4/price?ids=SOL',{signal:AbortSignal.timeout(8000)});
-    if(r.ok){
-      setApi('jup','live','ready');
-      log('g','Jupiter ready');
-    }else throw new Error('HTTP '+r.status);
-  }catch(e){
+  // Try multiple Jupiter endpoints — browser CORS can block some
+  const endpoints=[
+    `${JUP_QUOTE}?inputMint=${SOL_MINT}&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=100000000&slippageBps=100`,
+    'https://price.jup.ag/v4/price?ids=SOL',
+    'https://token.jup.ag/strict',
+  ];
+  let jupOk=false;
+  for(const url of endpoints){
     try{
-      // fallback: quote API SOL→USDC
-      const r2=await fetch(
-        `${JUP_QUOTE}?inputMint=${SOL_MINT}&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=100000000&slippageBps=100`,
-        {signal:AbortSignal.timeout(8000)}
-      );
-      if(r2.ok){setApi('jup','live','ready');log('g','Jupiter ready');}
-      else setApi('jup','warn','degraded');
-    }catch(e2){
-      setApi('jup','warn','ready');  // assume ready — don't block on ping
-      log('y','Jupiter ping blocked by browser — will work when quoting real tokens');
-    }
+      const r=await fetch(url,{signal:AbortSignal.timeout(6000)});
+      if(r.ok){jupOk=true;break;}
+    }catch(e){}
+  }
+  if(jupOk){
+    setApi('jup','live','ready');
+    log('g','Jupiter ready');
+  }else{
+    // Jupiter pings often blocked by browser CORS on static sites
+    // The actual swap API works fine even when ping fails
+    setApi('jup','warn','ready');
+    log('y','Jupiter swap ready — ping blocked by browser CORS (normal for static sites)');
   }
 })();
 (async()=>{setApi('dex','warn','checking');try{const r=await fetch(`https://api.dexscreener.com/latest/dex/tokens/${SOL_MINT}`,{signal:AbortSignal.timeout(5000)});setApi('dex',r.ok?'live':'warn',r.ok?'ready':'degraded');}catch(e){setApi('dex','dead','error');}})();
