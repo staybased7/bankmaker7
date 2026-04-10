@@ -758,11 +758,8 @@ async function handleToken(tok){
     if(autoSnipe&&walletConnected){
       if(!isSolAddr(tok.mint)){
         log('r','Auto-snipe skipped — invalid mint: '+tok.name);
-      }else if(dexData&&liq<minLiq){
-        // Has DEX data but confirmed low liquidity — Jupiter will likely fail
-        log('y',`Auto-snipe waiting — liq $${Math.round(liq).toLocaleString()} below $${minLiq.toLocaleString()} minimum: ${tok.name}`);
       }else{
-        // No DEX data = brand new PumpPortal token — try the snipe, Jupiter will tell us if it fails
+        // PumpPortal bonding curve works even at $0 liquidity — no gate needed
         log('y','Auto-snipe firing: '+tok.name+' score '+tok.score+' liq $'+Math.round(liq).toLocaleString());
         pending=tok;await doSnipe(tok);
       }
@@ -810,9 +807,67 @@ async function getQuote(outMint,solAmt,slipPct){
   throw new Error(lastErr||'Jupiter quote failed');
 }
 
-async function execSwap(quote,pubkey,feeSol){
-  const res=await fetch(JUP_SWAP,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({quoteResponse:quote,userPublicKey:pubkey,wrapAndUnwrapSol:true,prioritizationFeeLamports:Math.round(feeSol*1e9)}),signal:AbortSignal.timeout(10000)});
-  if(!res.ok)throw new Error('Swap HTTP '+res.status);
+// ── PUMPPORTAL BONDING CURVE TRADE ──────────────────────────────────
+// For brand new pump.fun tokens that haven't graduated to Raydium yet
+// Uses PumpPortal's trade-local API which trades directly on the bonding curve
+// This is how real pump.fun snipers work — bypasses Jupiter entirely
+async function execPumpTrade(mint,pubkey,solAmount,slipPct,feeSol){
+  const res=await fetch('https://pumpportal.fun/api/trade-local',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      publicKey:    pubkey,
+      action:       'buy',
+      mint:         mint,
+      denominatedInSol: 'true',
+      amount:       solAmount,
+      slippage:     slipPct,
+      priorityFee:  feeSol,
+      pool:         'pump'   // use pump.fun bonding curve
+    }),
+    signal:AbortSignal.timeout(10000)
+  });
+  if(!res.ok) throw new Error('PumpPortal trade HTTP '+res.status);
+  // response is a raw serialized transaction (not JSON)
+  const bytes=new Uint8Array(await res.arrayBuffer());
+  const tx=solanaWeb3.VersionedTransaction.deserialize(bytes);
+  const{signature}=await window.solana.signAndSendTransaction(tx);
+  return signature;
+}
+
+// ── PUMPSWAP TRADE (for graduated tokens on PumpSwap DEX) ───────────
+async function execPumpSwapTrade(mint,pubkey,solAmount,slipPct,feeSol){
+  const res=await fetch('https://pumpportal.fun/api/trade-local',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      publicKey:    pubkey,
+      action:       'buy',
+      mint:         mint,
+      denominatedInSol: 'true',
+      amount:       solAmount,
+      slippage:     slipPct,
+      priorityFee:  feeSol,
+      pool:         'pumpswap'  // use PumpSwap DEX
+    }),
+    signal:AbortSignal.timeout(10000)
+  });
+  if(!res.ok) throw new Error('PumpSwap trade HTTP '+res.status);
+  const bytes=new Uint8Array(await res.arrayBuffer());
+  const tx=solanaWeb3.VersionedTransaction.deserialize(bytes);
+  const{signature}=await window.solana.signAndSendTransaction(tx);
+  return signature;
+}
+
+// ── JUPITER SWAP (fallback for Raydium-graduated tokens) ─────────────
+async function execJupSwap(quote,pubkey,feeSol){
+  const res=await fetch(JUP_SWAP,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({quoteResponse:quote,userPublicKey:pubkey,wrapAndUnwrapSol:true,prioritizationFeeLamports:Math.round(feeSol*1e9)}),
+    signal:AbortSignal.timeout(10000)
+  });
+  if(!res.ok)throw new Error('Jupiter swap HTTP '+res.status);
   const{swapTransaction,error}=await res.json();
   if(error)throw new Error(error);
   const bytes=Uint8Array.from(atob(swapTransaction),c=>c.charCodeAt(0));
@@ -821,34 +876,77 @@ async function execSwap(quote,pubkey,feeSol){
   return signature;
 }
 
-// ── SNIPE ──
+// ── SNIPE — Smart routing: PumpPortal bonding curve → PumpSwap → Jupiter
 async function doSnipe(tok){
-  const sol=parseFloat(g('cfg-sol').value),slip=parseFloat(g('cfg-slip').value),fee=parseFloat(g('cfg-fee').value);
+  const sol=parseFloat(g('cfg-sol').value);
+  const slip=parseFloat(g('cfg-slip').value);
+  const fee=parseFloat(g('cfg-fee').value);
+
+  log('y',`Sniping ${tok.name} — trying PumpPortal bonding curve first...`);
+
+  // Route 1: PumpPortal bonding curve (works for ALL pump.fun tokens, even 0 seconds old)
   try{
-    log('y',`Quoting ${tok.name}…`);
-    const quote=await getQuote(tok.mint,sol,slip);
     log('y','Phantom approval needed — check your wallet');
-    const sig=await execSwap(quote,fullAddr,fee);
+    const sig=await execPumpTrade(tok.mint,fullAddr,sol,slip,fee);
     snipes++;
-    const pos={...tok,entry:sol,pnl:0,open:true,time:ftime(),txHash:sig,remainingPct:1,tier1Hit:false,tier2Hit:false,tier1Tx:null,tier2Tx:null};
+    const pos={...tok,entry:sol,pnl:0,open:true,time:ftime(),txHash:sig,remainingPct:1,tier1Hit:false,tier2Hit:false,tier1Tx:null,tier2Tx:null,route:'pump'};
     positions.unshift(pos);
-    log('g',`Snipe confirmed: ${tok.name} — ${sol} SOL`,sig,tok.mint);
+    log('g',`SNIPE CONFIRMED via pump.fun: ${tok.name} — ${sol} SOL`,sig,tok.mint);
     toast(`Snipe sent! ${tok.name}`);
     renderPositions();updateStats();
     scheduleExit(pos);
-  }catch(e){
-    const msg=e.message||'unknown error';
-    if(msg.includes('route')||msg.includes('liquidity')){
-      log('y',`Snipe skipped — no Jupiter route yet for ${tok.name} (token may need more liquidity)`);
-    }else if(msg.includes('fetch')||msg.includes('network')){
-      log('r',`Snipe failed — network error: ${msg}`);
-      toast('Network error — check connection','red');
-    }else if(msg.includes('rejected')||msg.includes('User')){
+    return;
+  }catch(e1){
+    const m=e1.message||'';
+    if(m.includes('rejected')||m.includes('User')){
       log('y','Snipe cancelled by user in Phantom');
-    }else{
-      log('r',`Snipe failed: ${msg}`,null,tok.mint);
-      toast('Snipe failed: '+msg.slice(0,40),'red');
+      pending=null;return;
     }
+    log('y',`PumpPortal bonding curve failed (${m.slice(0,40)}) — trying PumpSwap...`);
+  }
+
+  // Route 2: PumpSwap (for tokens that graduated from bonding curve)
+  try{
+    const sig=await execPumpSwapTrade(tok.mint,fullAddr,sol,slip,fee);
+    snipes++;
+    const pos={...tok,entry:sol,pnl:0,open:true,time:ftime(),txHash:sig,remainingPct:1,tier1Hit:false,tier2Hit:false,tier1Tx:null,tier2Tx:null,route:'pumpswap'};
+    positions.unshift(pos);
+    log('g',`SNIPE CONFIRMED via PumpSwap: ${tok.name} — ${sol} SOL`,sig,tok.mint);
+    toast(`Snipe sent! ${tok.name}`);
+    renderPositions();updateStats();
+    scheduleExit(pos);
+    return;
+  }catch(e2){
+    const m=e2.message||'';
+    if(m.includes('rejected')||m.includes('User')){
+      log('y','Snipe cancelled by user in Phantom');
+      pending=null;return;
+    }
+    log('y',`PumpSwap failed (${m.slice(0,40)}) — trying Jupiter...`);
+  }
+
+  // Route 3: Jupiter (for tokens fully on Raydium)
+  try{
+    const quote=await getQuote(tok.mint,sol,slip);
+    const sig=await execJupSwap(quote,fullAddr,fee);
+    snipes++;
+    const pos={...tok,entry:sol,pnl:0,open:true,time:ftime(),txHash:sig,remainingPct:1,tier1Hit:false,tier2Hit:false,tier1Tx:null,tier2Tx:null,route:'jupiter'};
+    positions.unshift(pos);
+    log('g',`SNIPE CONFIRMED via Jupiter: ${tok.name} — ${sol} SOL`,sig,tok.mint);
+    toast(`Snipe sent! ${tok.name}`);
+    renderPositions();updateStats();
+    scheduleExit(pos);
+    return;
+  }catch(e3){
+    const m=e3.message||'';
+    if(m.includes('rejected')||m.includes('User')){
+      log('y','Snipe cancelled in Phantom');
+    }else if(m.includes('route')||m.includes('liquidity')){
+      log('r',`All routes failed for ${tok.name} — token may have no tradeable liquidity yet`);
+    }else{
+      log('r',`All 3 routes failed: ${m.slice(0,60)}`,null,tok.mint);
+    }
+    toast('Snipe failed — see log','red');
     pending=null;
   }
 }
@@ -1232,6 +1330,7 @@ function renderPositions(){
     return`<div class="pos-card ${cardC}">
       <div class="pos-top">
         <span class="pos-name">${p.name}</span>
+        ${p.route?`<span style="font-size:7px;color:var(--text3);border:1px solid var(--border);padding:1px 5px;letter-spacing:1px">${p.route.toUpperCase()}</span>`:''} 
         <span class="pos-pnl ${p.pnl>=0?'up':'dn'}">${p.open?'LIVE · ':''}${pnlStr}</span>
       </div>
       <div class="tier-row">
@@ -1299,7 +1398,7 @@ function updateStats(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 setTimeout(()=>log('g','BankMaker7 initialized — PumpPortal + DexScreener + RugCheck + Jupiter ready'),400);
-setTimeout(()=>log('g','Auto-snipe ON — will fire when score ≥ min score and liq ≥ $500'),500);
+setTimeout(()=>log('g','Auto-snipe ON — routing: pump.fun bonding curve → PumpSwap → Jupiter'),500);
 setTimeout(()=>{
   const k1=HELIUS_KEY_1.includes('PASTE-NEW-KEY')||HELIUS_KEY_1.includes('YOUR-HELIUS');
   const k2=HELIUS_KEY_2.includes('PASTE-NEW-KEY')||HELIUS_KEY_2.includes('YOUR-HELIUS');
