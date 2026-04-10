@@ -507,7 +507,7 @@ body{font-family:var(--font);background:var(--navy);color:var(--text);min-height
 //  2. Dashboard → Create API Key (make two)
 //  3. Paste your keys below and redeploy
 // ═══════════════════════════════════════
-const HELIUS_KEY_1 = '66293518-e517-479e-bc4e-7a12a81ed6ae'; 
+const HELIUS_KEY_1 = '66293518-e517-479e-bc4e-7a12a81ed6ae';
 const HELIUS_KEY_2 = '76293689-99be-45ab-9910-5c76a9ae79c7';
 
 const RPC_ENDPOINTS = [
@@ -931,9 +931,17 @@ function connectPump(){
     if(!running)return;
     try{
       const d=JSON.parse(e.data);
-      if(!d.mint)return;
+      if(!d.mint||!isSolAddr(d.mint))return;
       scanned++;
-      await handleToken({name:(d.symbol||d.name||'TOKEN')+'/SOL',mint:d.mint,score:50,age:0});
+      // PumpPortal fields: mint, symbol, name, traderPublicKey, txType
+      const sym=(d.symbol||d.name||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,10)||'NEW';
+      await handleToken({
+        name:sym+'/SOL',
+        mint:d.mint,
+        score:50,
+        age:0,
+        fromPump:true,
+      });
     }catch(_){}
   };
   ws.onerror=(e)=>{
@@ -985,46 +993,63 @@ function startFallback(){
   async function poll(){
     if(!running)return;
     let gotRealData=false;
-    try{
-      const res=await fetch('https://api.dexscreener.com/token-profiles/latest/v1',{signal:AbortSignal.timeout(6000)});
-      if(!res.ok)throw new Error('HTTP '+res.status);
-      const data=await res.json();
-      const profiles=Array.isArray(data)?data:[];
+    // Try DexScreener new pairs endpoint (Solana boosted pairs)
+    const dexEndpoints=[
+      'https://api.dexscreener.com/token-profiles/latest/v1',
+      'https://api.dexscreener.com/latest/dex/search?q=solana&orderBy=pairAge&order=asc',
+    ];
 
-      // Only keep Solana entries with a valid mint address
-      // p.header = banner image URL (NOT the name — this was the bug)
-      // p.tokenAddress = the actual Solana mint address
-      // p.description = sometimes has the token name
-      const valid=profiles.filter(p=>{
-        const chain=p.chainId||'';
-        if(chain&&chain!=='solana') return false;  // skip non-solana
-        return isSolAddr(p.tokenAddress);           // must have valid mint
-      });
+    for(const endpoint of dexEndpoints){
+      if(gotRealData) break;
+      try{
+        const res=await fetch(endpoint,{signal:AbortSignal.timeout(6000)});
+        if(!res.ok) continue;
+        const data=await res.json();
 
-      scanned+=valid.length;
-      if(valid.length>0) gotRealData=true;
-
-      for(const p of valid.slice(0,6)){
-        const mint=p.tokenAddress;
-        // Extract a real name: description first, then short mint, never the image URL
-        let sym='TOKEN';
-        if(p.description&&p.description.length<20&&!p.description.includes('http')){
-          sym=p.description.split(' ')[0].toUpperCase();
+        // Handle both endpoint formats
+        let mints=[];
+        if(Array.isArray(data)){
+          // token-profiles format: [{chainId, tokenAddress, ...}]
+          mints=data
+            .filter(p=>{
+              const chain=p.chainId||'solana';
+              return (chain==='solana')&&isSolAddr(p.tokenAddress);
+            })
+            .map(p=>({
+              mint:p.tokenAddress,
+              name:(()=>{
+                if(p.description&&p.description.length<20&&!p.description.includes('http'))
+                  return p.description.split(' ')[0].toUpperCase()+'/SOL';
+                return 'NEW'+p.tokenAddress.slice(-4).toUpperCase()+'/SOL';
+              })(),
+              age:rn(5,120),
+            }));
+        }else if(data.pairs){
+          // search format: {pairs:[{baseToken:{address,symbol}, chainId, ...}]}
+          mints=data.pairs
+            .filter(p=>p.chainId==='solana'&&isSolAddr(p.baseToken?.address))
+            .map(p=>({
+              mint:p.baseToken.address,
+              name:(p.baseToken.symbol||'TOKEN')+'/SOL',
+              age:Math.round((Date.now()-new Date(p.pairCreatedAt||Date.now()))/1000),
+            }));
         }
-        if(sym==='TOKEN'){
-          // use last 4 chars of mint as a short ID
-          sym='NEW'+mint.slice(-4).toUpperCase();
+
+        if(mints.length>0){
+          gotRealData=true;
+          scanned+=mints.length;
+          for(const t of mints.slice(0,5)){
+            await handleToken({name:t.name,mint:t.mint,score:50,age:t.age||60});
+          }
         }
-        await handleToken({name:sym+'/SOL',mint,score:50,age:rn(5,60)});
+      }catch(e){
+        // try next endpoint
       }
-    }catch(e){
-      // real API failed — fall through to sim
     }
 
-    // Only run simulation if real data didn't come through
+    // If real data failed, log it but don't show fake tokens
     if(!gotRealData){
-      scanned+=rn(1,3);
-      simTick();
+      log('y','DexScreener returned no Solana tokens — retrying...');
     }
     updateStats();
   }
@@ -1033,8 +1058,6 @@ function startFallback(){
 
 // ── BOT ──
 function setBotLabel(txt){const s=g('scan-txt');s.textContent=txt;}
-
-let simLoop=null;
 
 function toggleBot(){
   if(!walletConnected&&!running){
@@ -1047,16 +1070,16 @@ function toggleBot(){
     btn.textContent='STOP BOT';btn.className='btn btn-danger';
     dot.className='sdot live';setBotLabel('SCANNING');
     log('g','BankMaker7 started — scanning for new Solana pairs');
-    // Always start simulation loop as baseline — real APIs layer on top
-    simLoop=setInterval(()=>{ if(running){scanned+=rn(1,3);simTick();updateStats();} },2200);
     if(useFallback)startFallback();else connectPump();
   }else{
     btn.textContent='START BOT';btn.className='btn btn-primary';
     dot.className='sdot';setBotLabel('IDLE');
     if(ws){ws.close();ws=null;}
     clearInterval(dexTimer);
-    clearInterval(simLoop);simLoop=null;
-    log('y','Bot paused');toast('Paused','amber');
+    // Clear panels so stale tokens don't linger
+    tokens=[];improving=[];
+    renderOpps();renderImproving();
+    log('y','Bot paused — panels cleared');toast('Paused','amber');
   }
 }
 
@@ -1164,7 +1187,7 @@ function renderOpps(){
       <div style="display:flex;align-items:flex-start;gap:6px">
         <div style="flex:1">
           <div class="tok-name">${t.name}</div>
-          <div class="tok-addr">${short(t.mint)} · ${t.age}s · $${Math.round(t.dex?.liquidity||0).toLocaleString()} liq</div>
+          <div class="tok-addr">${t.fromPump?'⬡ pump.fun · ':''} ${short(t.mint)} · ${t.age}s · $${Math.round(t.dex?.liquidity||0).toLocaleString()} liq</div>
           ${chips(t)}
         </div>
         ${sbadge(t.score)}
