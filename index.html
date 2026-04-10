@@ -398,7 +398,7 @@ body{font-family:var(--font);background:var(--navy);color:var(--text);min-height
   <div class="setting-block">
     <div class="sb-title">Snipe Settings</div>
     <div class="srow"><span class="sk">Buy amount (SOL)</span>   <input class="sinput" id="cfg-sol"   type="number" value="0.01"  step="0.005" min="0.005" max="10"></div>
-    <div class="srow"><span class="sk">Min score</span>          <input class="sinput" id="cfg-score" type="number" value="75"   step="5"    min="50" max="99"></div>
+    <div class="srow"><span class="sk">Min score</span>          <input class="sinput" id="cfg-score" type="number" value="60"   step="5"    min="50" max="99"></div>
     <div class="srow"><span class="sk">Slippage %</span>         <input class="sinput" id="cfg-slip"  type="number" value="15"   step="1"    min="1" max="50"></div>
     <div class="srow"><span class="sk">Priority fee (SOL)</span> <input class="sinput" id="cfg-fee"   type="number" value="0.001" step="0.0005" min="0"></div>
   </div>
@@ -428,7 +428,7 @@ body{font-family:var(--font);background:var(--navy);color:var(--text);min-height
       <div class="toggle-pair"><button class="tog on" id="tog-lp" onclick="toggle('lp',true)">ON</button><button class="tog" id="tog-lp-off" onclick="toggle('lp',false)">OFF</button></div>
     </div>
     <div class="srow"><span class="sk">Moon bag (keep rest)</span>
-      <div class="toggle-pair"><button class="tog on" id="tog-moon" onclick="toggle('moon',true)">ON</button><button class="tog" id="tog-moon-off" onclick="toggle('moon',false)">OFF</button></div>
+      <div class="toggle-pair"><button class="tog" id="tog-moon" onclick="toggle('moon',true)">ON</button><button class="tog on" id="tog-moon-off" onclick="toggle('moon',false)">OFF</button></div>
     </div>
   </div>
 
@@ -507,7 +507,7 @@ body{font-family:var(--font);background:var(--navy);color:var(--text);min-height
 //  2. Dashboard → Create API Key (make two)
 //  3. Paste your keys below and redeploy
 // ═══════════════════════════════════════
-const HELIUS_KEY_1 = '66293518-e517-479e-bc4e-7a12a81ed6ae';
+const HELIUS_KEY_1 = '66293518-e517-479e-bc4e-7a12a81ed6ae'; 
 const HELIUS_KEY_2 = '76293689-99be-45ab-9910-5c76a9ae79c7';
 
 const RPC_ENDPOINTS = [
@@ -526,7 +526,7 @@ const SOL_MINT  = 'So11111111111111111111111111111111111111112';
 
 // ── STATE ──
 let running=false,walletConnected=false;
-let autoSnipe=true,rugOn=true,hpOn=true,lpOn=true,moonOn=true;
+let autoSnipe=true,rugOn=true,hpOn=true,lpOn=true,moonOn=false;
 let useFallback=false;
 let scanned=0,tracked=0,snipes=0,profit=0,early=0,rugBlocked=0,evCount=1;
 let apiCalls=0,apiErrors=0;
@@ -675,8 +675,7 @@ async function checkRug(mint){
   bumpApi();setApi('rug','warn','checking');
   try{
     const res=await fetch(RUG_API(mint),{
-      signal:AbortSignal.timeout(6000),
-      // no custom headers — keeps CORS simple
+      signal:AbortSignal.timeout(4000),
     });
     if(!res.ok)throw new Error('HTTP '+res.status);
     const data=await res.json();
@@ -702,34 +701,44 @@ async function checkRug(mint){
 // ── SCORING ──
 function score(tok,dex){
   let s=50;
-  // If brand new from PumpPortal and no DEX data yet — give benefit of the doubt
-  // DexScreener takes 1-3 min to index new pairs; don't penalise for that
+
+  // pump.fun tokens from PumpPortal — no DEX data yet (too new to be indexed)
+  // Give a strong baseline since these are the freshest possible tokens
   if(!dex){
+    // All pump.fun tokens get a 25pt base boost — they're genuinely new
+    s+=25;
     const age=tok.age||999;
-    if(age<30)  s+=25;  // extremely fresh — high potential
-    else if(age<60)  s+=15;
-    else if(age<120) s+=5;
+    if(age<60)   s+=10;  // under 1 min — extra boost
+    if(tok.fromPump) s+=5; // confirmed PumpPortal origin
     return Math.max(0,Math.min(100,Math.round(s)));
   }
+
+  // Has DEX data — score on real metrics
   const liq=dex.liquidity||0;
-  if(liq>2000)  s+=8;
-  if(liq>5000)  s+=8;
+  if(liq>1000)  s+=8;
+  if(liq>5000)  s+=10;
   if(liq>20000) s+=8;
   if(liq>50000) s+=5;
-  if(liq<500)   s-=20;
+  if(liq<200)   s-=15;  // basically zero liq
+
   const ch=dex.priceChange5m||0;
   if(ch>5)  s+=8;
   if(ch>15) s+=8;
   if(ch>30) s+=6;
-  if(ch<-25) s-=15;
+  if(ch<-30) s-=15;
+
   const age=tok.age||999;
-  if(age<30)   s+=15;
-  else if(age<60)  s+=10;
-  else if(age<120) s+=5;
+  if(age<60)   s+=15;
+  else if(age<180) s+=8;
+  else if(age<300) s+=3;
+
   const vol=dex.volume24h||0;
   if(vol>5000)   s+=5;
   if(vol>50000)  s+=5;
   if(vol>200000) s+=5;
+
+  if(tok.fromPump) s+=5;  // PumpPortal = fresh launch bonus
+
   return Math.max(0,Math.min(100,Math.round(s)));
 }
 
