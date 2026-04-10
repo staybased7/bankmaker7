@@ -422,7 +422,7 @@ body{font-family:var(--font);background:var(--navy);color:var(--text);min-height
       <div class="toggle-pair"><button class="tog on" id="tog-hp" onclick="toggle('hp',true)">ON</button><button class="tog" id="tog-hp-off" onclick="toggle('hp',false)">OFF</button></div>
     </div>
     <div class="srow"><span class="sk">Auto-snipe</span>
-      <div class="toggle-pair"><button class="tog" id="tog-auto" onclick="toggle('auto',true)">ON</button><button class="tog on" id="tog-auto-off" onclick="toggle('auto',false)">OFF</button></div>
+      <div class="toggle-pair"><button class="tog on" id="tog-auto" onclick="toggle('auto',true)">ON</button><button class="tog" id="tog-auto-off" onclick="toggle('auto',false)">OFF</button></div>
     </div>
     <div class="srow"><span class="sk">LP must be locked</span>
       <div class="toggle-pair"><button class="tog on" id="tog-lp" onclick="toggle('lp',true)">ON</button><button class="tog" id="tog-lp-off" onclick="toggle('lp',false)">OFF</button></div>
@@ -491,7 +491,7 @@ body{font-family:var(--font);background:var(--navy);color:var(--text);min-height
     <div class="mwarn">⚠ Meme tokens can lose 100% instantly. Rug pulls, honeypots and dev dumps are extremely common. Only use amounts you can afford to lose entirely. Not financial advice.</div>
     <div class="mbtn-row">
       <button class="btn btn-ghost" onclick="closeModal()">CANCEL</button>
-      <button class="btn btn-primary" id="confirm-btn" onclick="confirmSnipe()" disabled>FETCHING...</button>
+      <button class="btn btn-primary" id="confirm-btn" onclick="confirmSnipe()">CONFIRM BUY</button>
     </div>
   </div>
 </div>
@@ -507,7 +507,7 @@ body{font-family:var(--font);background:var(--navy);color:var(--text);min-height
 //  2. Dashboard → Create API Key (make two)
 //  3. Paste your keys below and redeploy
 // ═══════════════════════════════════════
-const HELIUS_KEY_1 = '66293518-e517-479e-bc4e-7a12a81ed6ae';
+const HELIUS_KEY_1 = '66293518-e517-479e-bc4e-7a12a81ed6ae'; 
 const HELIUS_KEY_2 = '76293689-99be-45ab-9910-5c76a9ae79c7';
 
 const RPC_ENDPOINTS = [
@@ -526,7 +526,7 @@ const SOL_MINT  = 'So11111111111111111111111111111111111111112';
 
 // ── STATE ──
 let running=false,walletConnected=false;
-let autoSnipe=false,rugOn=true,hpOn=true,lpOn=true,moonOn=true;
+let autoSnipe=true,rugOn=true,hpOn=true,lpOn=true,moonOn=true;
 let useFallback=false;
 let scanned=0,tracked=0,snipes=0,profit=0,early=0,rugBlocked=0,evCount=1;
 let apiCalls=0,apiErrors=0;
@@ -747,7 +747,7 @@ async function handleToken(tok){
     if(!rugData.safe&&rugOn){rugBlocked++;log('r',`Rug blocked: ${tok.name} (score ${rugData.score})`,null,tok.mint);updateStats();return;}
   }
   const minScore=parseInt(g('cfg-score').value)||75;
-  const minLiq=3000; // minimum $3k liquidity for Jupiter to route a swap
+  const minLiq=500; // minimum $500 liquidity — pump.fun tokens start around this level
 
   if(tok.score>=minScore){
     tokens.unshift(tok);if(tokens.length>9)tokens.pop();
@@ -758,10 +758,11 @@ async function handleToken(tok){
     if(autoSnipe&&walletConnected){
       if(!isSolAddr(tok.mint)){
         log('r','Auto-snipe skipped — invalid mint: '+tok.name);
-      }else if(!dexData||liq<minLiq){
-        // Token not indexed on DEX yet or liquidity too low — Jupiter will fail
+      }else if(dexData&&liq<minLiq){
+        // Has DEX data but confirmed low liquidity — Jupiter will likely fail
         log('y',`Auto-snipe waiting — liq $${Math.round(liq).toLocaleString()} below $${minLiq.toLocaleString()} minimum: ${tok.name}`);
       }else{
+        // No DEX data = brand new PumpPortal token — try the snipe, Jupiter will tell us if it fails
         log('y','Auto-snipe firing: '+tok.name+' score '+tok.score+' liq $'+Math.round(liq).toLocaleString());
         pending=tok;await doSnipe(tok);
       }
@@ -777,17 +778,35 @@ async function getQuote(outMint,solAmt,slipPct){
   bumpApi();setApi('jup','warn','quoting');
   const url=`${JUP_QUOTE}?inputMint=${SOL_MINT}&outputMint=${outMint}&amount=${Math.round(solAmt*1e9)}&slippageBps=${Math.round(slipPct*100)}`;
   let lastErr='';
-  // try up to 2 times (Jupiter can be briefly slow)
-  for(let attempt=0;attempt<2;attempt++){
+  for(let attempt=0;attempt<3;attempt++){
     try{
-      const res=await fetch(url,{signal:AbortSignal.timeout(10000)});
-      if(!res.ok){lastErr='Jupiter HTTP '+res.status;continue;}
+      const res=await fetch(url,{
+        signal:AbortSignal.timeout(12000),
+        mode:'cors',
+      });
+      if(!res.ok){
+        lastErr='Jupiter HTTP '+res.status;
+        await new Promise(r=>setTimeout(r,2000));
+        continue;
+      }
       const q=await res.json();
-      if(q.error){lastErr='Jupiter: '+q.error;continue;}
-      setApi('jup','live','ready');return q;
-    }catch(e){lastErr=e.message;await new Promise(r=>setTimeout(r,1500));}
+      if(q.error){
+        // ROUTE_PLAN_NOT_FOUND = no liquidity, not a Jupiter error
+        if(q.error.includes('ROUTE')||q.error.includes('route')){
+          throw new Error('No swap route — token may have no liquidity yet');
+        }
+        lastErr='Jupiter: '+q.error;
+        continue;
+      }
+      setApi('jup','live','ready');
+      return q;
+    }catch(e){
+      lastErr=e.message;
+      if(e.message.includes('No swap route')) throw e; // don't retry no-route
+      await new Promise(r=>setTimeout(r,2000));
+    }
   }
-  bumpApi(true);setApi('jup','dead','error');
+  bumpApi(true);setApi('jup','warn','ready'); // keep yellow not red — Jupiter itself is fine
   throw new Error(lastErr||'Jupiter quote failed');
 }
 
@@ -817,7 +836,21 @@ async function doSnipe(tok){
     toast(`Snipe sent! ${tok.name}`);
     renderPositions();updateStats();
     scheduleExit(pos);
-  }catch(e){log('r','Snipe failed: '+e.message);toast('Snipe failed','red');pending=null;}
+  }catch(e){
+    const msg=e.message||'unknown error';
+    if(msg.includes('route')||msg.includes('liquidity')){
+      log('y',`Snipe skipped — no Jupiter route yet for ${tok.name} (token may need more liquidity)`);
+    }else if(msg.includes('fetch')||msg.includes('network')){
+      log('r',`Snipe failed — network error: ${msg}`);
+      toast('Network error — check connection','red');
+    }else if(msg.includes('rejected')||msg.includes('User')){
+      log('y','Snipe cancelled by user in Phantom');
+    }else{
+      log('r',`Snipe failed: ${msg}`,null,tok.mint);
+      toast('Snipe failed: '+msg.slice(0,40),'red');
+    }
+    pending=null;
+  }
 }
 
 // ── SCALED EXIT ──
@@ -1243,6 +1276,7 @@ function updateStats(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 setTimeout(()=>log('g','BankMaker7 initialized — PumpPortal + DexScreener + RugCheck + Jupiter ready'),400);
+setTimeout(()=>log('g','Auto-snipe ON — will fire when score ≥ min score and liq ≥ $500'),500);
 setTimeout(()=>{
   const k1=HELIUS_KEY_1.includes('PASTE-NEW-KEY')||HELIUS_KEY_1.includes('YOUR-HELIUS');
   const k2=HELIUS_KEY_2.includes('PASTE-NEW-KEY')||HELIUS_KEY_2.includes('YOUR-HELIUS');
